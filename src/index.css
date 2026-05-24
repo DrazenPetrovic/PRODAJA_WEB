@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes softBgShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.login-soft-bg {
+  background: linear-gradient(
+    135deg,
+    rgba(15, 118, 110, 0.14) 0%,
+    rgba(249, 115, 22, 0.12) 50%,
+    rgba(15, 118, 110, 0.10) 100%
+  );
+  background-size: 220% 220%;
+  animation: softBgShift 18s ease-in-out infinite;
+}
+
+.dark .login-soft-bg {
+  background: linear-gradient(
+    135deg,
+    rgba(12, 28, 26, 1) 0%,
+    rgba(20, 40, 36, 1) 50%,
+    rgba(12, 28, 26, 1) 100%
+  );
+  background-size: 220% 220%;
+  animation: softBgShift 18s ease-in-out infinite;
+}
