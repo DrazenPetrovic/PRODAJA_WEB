@@ -9,6 +9,7 @@ import healthRoutes from "./routes/health.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import partneriRoutes from "./routes/partneri.routes.js";
 import artikliRoutes from "./routes/artikli.routes.js";
+import racunRoutes from "./routes/racun.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,6 +29,7 @@ export const createApp = () => {
   app.use("/api/auth", authRoutes);
   app.use("/api/partneri", partneriRoutes);
   app.use("/api/artikli", artikliRoutes);
+  app.use("/api/racun", racunRoutes);
 
   if (env.NODE_ENV === "production") {
     const distPath = path.join(__dirname, "../dist");

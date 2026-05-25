@@ -1,5 +1,7 @@
 import ReactDOM from "react-dom";
 import { RacunUnos } from "./RacunUnos";
+import { RacunPregled } from "./RacunPregled";
+import { RacunStorno } from "./RacunStorno";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 import {
@@ -9,6 +11,7 @@ import {
   Moon,
   PenLine,
   Receipt,
+  RotateCcw,
   Settings,
   Sun,
   TrendingUp,
@@ -24,7 +27,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type MenuSection = "file-opcije" | "racun-unos" | "racun-pregled" | null;
+type MenuSection = "file-opcije" | "racun-unos" | "racun-storno" | "racun-pregled" | null;
 
 export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) {
   const { theme, toggleTheme } = useTheme();
@@ -32,6 +35,9 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
   const [openMenu, setOpenMenu] = useState<"file" | "racun" | null>(null);
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 });
   const [hoveredBtn, setHoveredBtn] = useState<"file" | "racun" | null>(null);
+  const [uspjehKey, setUspjehKey] = useState(0);
+  const [pokaziUspjeh, setPokaziUspjeh] = useState(false);
+  const uspjehTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fileBtnRef = useRef<HTMLButtonElement>(null);
   const racunBtnRef = useRef<HTMLButtonElement>(null);
@@ -64,6 +70,13 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
   const handleSectionChange = (section: MenuSection) => {
     setActiveSection(section);
     setOpenMenu(null);
+  };
+
+  const handleRacunKreiran = () => {
+    if (uspjehTimerRef.current) clearTimeout(uspjehTimerRef.current);
+    setPokaziUspjeh(true);
+    setUspjehKey((k) => k + 1);
+    uspjehTimerRef.current = setTimeout(() => setPokaziUspjeh(false), 10000);
   };
 
   const navBtnStyle = (menu: "file" | "racun", isActive: boolean): React.CSSProperties => ({
@@ -152,7 +165,7 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
 
       {/* Navigation */}
       <nav className="bg-white dark:bg-[#0d2b27] shadow-sm border-b border-gray-100 dark:border-[#1a3d38]">
-        <div className="mx-[5px] px-[5px] flex gap-2 py-3 items-center justify-center">
+        <div className="mx-[5px] px-[5px] flex gap-2 py-3 items-center justify-center relative">
 
           {/* FILE */}
           <div>
@@ -274,6 +287,25 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
                     </button>
 
                     <button
+                      onClick={() => handleSectionChange("racun-storno")}
+                      className={dropdownItemClass(activeSection === "racun-storno")}
+                      style={activeSection === "racun-storno" ? { background: PRIMARY } : {}}
+                    >
+                      <span
+                        className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
+                          activeSection === "racun-storno" ? "" : "bg-[#fff7ed] dark:bg-[#2a1a08]"
+                        }`}
+                        style={activeSection === "racun-storno" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                      >
+                        <RotateCcw
+                          size={13}
+                          style={{ color: activeSection === "racun-storno" ? "#fff" : ACCENT }}
+                        />
+                      </span>
+                      Storniranje računa
+                    </button>
+
+                    <button
                       onClick={() => handleSectionChange("racun-pregled")}
                       className={dropdownItemClass(activeSection === "racun-pregled")}
                       style={activeSection === "racun-pregled" ? { background: PRIMARY } : {}}
@@ -297,6 +329,23 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
               )}
           </div>
 
+          {/* Notifikacija — uspješan unos računa */}
+          {pokaziUspjeh && (
+            <div
+              key={uspjehKey}
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-lg"
+              style={{
+                background: PRIMARY,
+                animation: "fadeInOut 10s ease forwards",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="8" fill="rgba(255,255,255,0.2)" />
+                <path d="M4.5 8L7 10.5L11.5 5.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              USPJEŠNO UNESENO
+            </div>
+          )}
         </div>
       </nav>
 
@@ -315,18 +364,12 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
           </div>
         )}
 
-        {activeSection === "racun-unos" && <RacunUnos />}
+        {activeSection === "racun-unos" && <RacunUnos onUspjeh={handleRacunKreiran} />}
+
+        {activeSection === "racun-storno" && <RacunStorno />}
 
         {activeSection === "racun-pregled" && (
-          <div className="bg-white dark:bg-[#0f2320] rounded-2xl shadow-sm border border-gray-100 dark:border-[#1a3d38] p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#fff7ed] dark:bg-[#2a1a08]">
-                <Receipt size={20} style={{ color: ACCENT }} />
-              </div>
-              <h2 className="text-xl font-bold text-gray-800 dark:text-[#e6f4f2]">Pregled računa</h2>
-            </div>
-            <p className="text-gray-500 dark:text-[#4a7a74]">Prikaz i pretraga računa.</p>
-          </div>
+          <RacunPregled />
         )}
       </main>
     </div>

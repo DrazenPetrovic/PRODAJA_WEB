@@ -29,3 +29,10 @@
   background-size: 220% 220%;
   animation: softBgShift 18s ease-in-out infinite;
 }
+
+@keyframes fadeInOut {
+  0%   { opacity: 0; transform: translateY(-50%) translateX(6px); }
+  8%   { opacity: 1; transform: translateY(-50%) translateX(0); }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
