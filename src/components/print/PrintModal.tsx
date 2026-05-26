@@ -1,5 +1,6 @@
 import { useState } from "react";
 import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 import { Printer, X, ZoomIn, ZoomOut } from "lucide-react";
 
 const PRIMARY = "#0F766E";
@@ -36,14 +37,31 @@ export function PrintModal({ job, onClose }: Props) {
       : (format === "A4" ? 210 : 148) * MM_TO_PX;
 
   const handlePrint = () => {
-    const existing = document.getElementById("__print_page_style__");
-    if (existing) existing.remove();
+    document.getElementById("__print_page_style__")?.remove();
+    document.getElementById("__print_content__")?.remove();
+
+    const printDiv = document.createElement("div");
+    printDiv.id = "__print_content__";
+    document.body.appendChild(printDiv);
+
+    const printRoot = createRoot(printDiv);
+    printRoot.render(job.component);
+
     const style = document.createElement("style");
     style.id = "__print_page_style__";
-    style.textContent = `@media print { @page { size: ${format} ${orientation}; margin: 12mm; } }`;
+    style.textContent =
+      `@media print { @page { size: ${format} ${orientation}; margin: 12mm; } body > *:not(#__print_content__) { display: none !important; } #__print_content__ { display: block !important; } }`;
     document.head.appendChild(style);
-    window.print();
-    setTimeout(() => document.getElementById("__print_page_style__")?.remove(), 1500);
+
+    const cleanup = () => {
+      printRoot.unmount();
+      printDiv.remove();
+      document.getElementById("__print_page_style__")?.remove();
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+
+    setTimeout(() => window.print(), 50);
   };
 
   return ReactDOM.createPortal(

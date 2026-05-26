@@ -343,6 +343,7 @@ export function RacunPregled() {
                           <button
                             onClick={() => setPrintJob({
                               title: `${r.vrsta_racuna} — ${r.broj_racuna}`,
+                              defaultFormat: "A5",
                               component: (
                                 <RacunTemplate
                                   racun={r}

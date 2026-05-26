@@ -2,10 +2,16 @@ import ReactDOM from "react-dom";
 import { RacunUnos } from "./RacunUnos";
 import { RacunPregled } from "./RacunPregled";
 import { RacunStorno } from "./RacunStorno";
+import { BlagajnaUplate } from "./BlagajnaUplate";
+import { BlagajnaIsplate } from "./BlagajnaIsplate";
+import { BlagajnaPregledUplata } from "./BlagajnaPregledUplata";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 import {
+  ArrowDownCircle,
+  ArrowUpCircle,
   ChevronDown,
+  ClipboardList,
   FileText,
   LogOut,
   Moon,
@@ -15,6 +21,7 @@ import {
   Settings,
   Sun,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
 
 const PRIMARY = "#0F766E";
@@ -27,22 +34,35 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type MenuSection = "file-opcije" | "racun-unos" | "racun-storno" | "racun-pregled" | null;
+type MenuKey = "file" | "racun" | "blagajna";
+
+type MenuSection =
+  | "file-opcije"
+  | "racun-unos"
+  | "racun-storno"
+  | "racun-pregled"
+  | "blagajna-uplate"
+  | "blagajna-isplate"
+  | "blagajna-pregled-uplata"
+  | "blagajna-pregled-isplata"
+  | null;
 
 export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) {
   const { theme, toggleTheme } = useTheme();
   const [activeSection, setActiveSection] = useState<MenuSection>(null);
-  const [openMenu, setOpenMenu] = useState<"file" | "racun" | null>(null);
+  const [openMenu, setOpenMenu] = useState<MenuKey | null>(null);
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 });
-  const [hoveredBtn, setHoveredBtn] = useState<"file" | "racun" | null>(null);
-  const [uspjehKey, setUspjehKey] = useState(0);
-  const [pokaziUspjeh, setPokaziUspjeh] = useState(false);
-  const uspjehTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [hoveredBtn, setHoveredBtn] = useState<MenuKey | null>(null);
+  const [notifKey, setNotifKey] = useState(0);
+  const [notifMsg, setNotifMsg] = useState<string | null>(null);
+  const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fileBtnRef = useRef<HTMLButtonElement>(null);
   const racunBtnRef = useRef<HTMLButtonElement>(null);
+  const blagajnaBtnRef = useRef<HTMLButtonElement>(null);
   const fileDropRef = useRef<HTMLDivElement>(null);
   const racunDropRef = useRef<HTMLDivElement>(null);
+  const blagajnaDropRef = useRef<HTMLDivElement>(null);
 
   const isAdministrator = vrstaRadnika === 1;
   const roleLabel = isAdministrator ? "Administrator" : "Korisnik";
@@ -52,14 +72,20 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
       const t = e.target as Node;
       const inFile = fileBtnRef.current?.contains(t) || fileDropRef.current?.contains(t);
       const inRacun = racunBtnRef.current?.contains(t) || racunDropRef.current?.contains(t);
-      if (!inFile && !inRacun) setOpenMenu(null);
+      const inBlagajna = blagajnaBtnRef.current?.contains(t) || blagajnaDropRef.current?.contains(t);
+      if (!inFile && !inRacun && !inBlagajna) setOpenMenu(null);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const toggleMenu = (menu: "file" | "racun") => {
-    const ref = menu === "file" ? fileBtnRef : racunBtnRef;
+  const toggleMenu = (menu: MenuKey) => {
+    const refs: Record<MenuKey, React.RefObject<HTMLButtonElement>> = {
+      file: fileBtnRef,
+      racun: racunBtnRef,
+      blagajna: blagajnaBtnRef,
+    };
+    const ref = refs[menu];
     if (ref.current) {
       const r = ref.current.getBoundingClientRect();
       setDropPos({ top: r.bottom + 6, left: r.left });
@@ -72,14 +98,22 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
     setOpenMenu(null);
   };
 
-  const handleRacunKreiran = () => {
-    if (uspjehTimerRef.current) clearTimeout(uspjehTimerRef.current);
-    setPokaziUspjeh(true);
-    setUspjehKey((k) => k + 1);
-    uspjehTimerRef.current = setTimeout(() => setPokaziUspjeh(false), 10000);
+  const showNotif = (msg: string) => {
+    if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
+    setNotifMsg(msg);
+    setNotifKey((k) => k + 1);
+    notifTimerRef.current = setTimeout(() => setNotifMsg(null), 5000);
   };
 
-  const navBtnStyle = (menu: "file" | "racun", isActive: boolean): React.CSSProperties => ({
+  const handleRacunKreiran = () => showNotif("USPJEŠNO UNESENO");
+
+  const handleUplataSuccess = (iznos: number, partner: string) =>
+    showNotif(`${iznos.toLocaleString("bs-BA", { minimumFractionDigits: 2 })} KM · ${partner}`);
+
+  const handleIsplataSuccess = (iznos: number, opis: string) =>
+    showNotif(`${iznos.toLocaleString("bs-BA", { minimumFractionDigits: 2 })} KM · ${opis}`);
+
+  const navBtnStyle = (menu: MenuKey, isActive: boolean): React.CSSProperties => ({
     background: isActive || hoveredBtn === menu ? ACCENT : PRIMARY,
     borderColor: ACCENT,
     color: "#fff",
@@ -97,6 +131,21 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
 
   const dropBg = "bg-white dark:bg-[#0f2320] border-gray-100 dark:border-[#1a3d38]";
   const dropStripeBg = "bg-[#f0faf9] dark:bg-[#0d2b27]";
+
+  const racunActive = !!(
+    openMenu === "racun" ||
+    activeSection === "racun-unos" ||
+    activeSection === "racun-storno" ||
+    activeSection === "racun-pregled"
+  );
+
+  const blagajnaActive = !!(
+    openMenu === "blagajna" ||
+    activeSection === "blagajna-uplate" ||
+    activeSection === "blagajna-isplate" ||
+    activeSection === "blagajna-pregled-uplata" ||
+    activeSection === "blagajna-pregled-isplata"
+  );
 
   return (
     <div className="min-h-screen bg-[#f0faf9] dark:bg-[#0a1e1c]">
@@ -235,7 +284,7 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
               ref={racunBtnRef}
               onClick={() => toggleMenu("racun")}
               className={navBtnBase}
-              style={navBtnStyle("racun", !!(openMenu === "racun" || activeSection === "racun-pregled"))}
+              style={navBtnStyle("racun", racunActive)}
               onMouseEnter={() => setHoveredBtn("racun")}
               onMouseLeave={() => setHoveredBtn(null)}
             >
@@ -329,21 +378,143 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
               )}
           </div>
 
-          {/* Notifikacija — uspješan unos računa */}
-          {pokaziUspjeh && (
+          {/* BLAGAJNA */}
+          <div>
+            <button
+              ref={blagajnaBtnRef}
+              onClick={() => toggleMenu("blagajna")}
+              className={navBtnBase}
+              style={navBtnStyle("blagajna", blagajnaActive)}
+              onMouseEnter={() => setHoveredBtn("blagajna")}
+              onMouseLeave={() => setHoveredBtn(null)}
+            >
+              <span
+                className="flex items-center justify-center w-6 h-6 rounded-lg"
+                style={{ background: "rgba(255,255,255,0.85)" }}
+              >
+                <Wallet size={13} style={{ color: "#111" }} />
+              </span>
+              Blagajna
+              <ChevronDown
+                size={14}
+                className={`transition-transform duration-200 ${openMenu === "blagajna" ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {openMenu === "blagajna" &&
+              ReactDOM.createPortal(
+                <div
+                  ref={blagajnaDropRef}
+                  style={{ position: "fixed", top: dropPos.top, left: dropPos.left, zIndex: 9999 }}
+                  className={`w-52 rounded-2xl border ${dropBg} shadow-2xl overflow-hidden`}
+                >
+                  <div
+                    className={`px-4 py-2.5 text-xs font-bold tracking-widest uppercase flex items-center gap-2 ${dropStripeBg}`}
+                    style={{ color: PRIMARY }}
+                  >
+                    <Wallet size={12} />
+                    Blagajna
+                  </div>
+                  <div className="p-2 space-y-0.5">
+                    <button
+                      onClick={() => handleSectionChange("blagajna-uplate")}
+                      className={dropdownItemClass(activeSection === "blagajna-uplate")}
+                      style={activeSection === "blagajna-uplate" ? { background: PRIMARY } : {}}
+                    >
+                      <span
+                        className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
+                          activeSection === "blagajna-uplate" ? "" : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
+                        }`}
+                        style={activeSection === "blagajna-uplate" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                      >
+                        <ArrowDownCircle
+                          size={13}
+                          style={{ color: activeSection === "blagajna-uplate" ? "#fff" : PRIMARY }}
+                        />
+                      </span>
+                      Uplate
+                    </button>
+
+                    <button
+                      onClick={() => handleSectionChange("blagajna-isplate")}
+                      className={dropdownItemClass(activeSection === "blagajna-isplate")}
+                      style={activeSection === "blagajna-isplate" ? { background: PRIMARY } : {}}
+                    >
+                      <span
+                        className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
+                          activeSection === "blagajna-isplate" ? "" : "bg-[#fff7ed] dark:bg-[#2a1a08]"
+                        }`}
+                        style={activeSection === "blagajna-isplate" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                      >
+                        <ArrowUpCircle
+                          size={13}
+                          style={{ color: activeSection === "blagajna-isplate" ? "#fff" : ACCENT }}
+                        />
+                      </span>
+                      Isplate
+                    </button>
+
+                    <div className="h-px bg-gray-100 dark:bg-[#1a3d38] my-1" />
+
+                    <button
+                      onClick={() => handleSectionChange("blagajna-pregled-uplata")}
+                      className={dropdownItemClass(activeSection === "blagajna-pregled-uplata")}
+                      style={activeSection === "blagajna-pregled-uplata" ? { background: PRIMARY } : {}}
+                    >
+                      <span
+                        className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
+                          activeSection === "blagajna-pregled-uplata" ? "" : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
+                        }`}
+                        style={activeSection === "blagajna-pregled-uplata" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                      >
+                        <ClipboardList
+                          size={13}
+                          style={{ color: activeSection === "blagajna-pregled-uplata" ? "#fff" : PRIMARY }}
+                        />
+                      </span>
+                      Pregled uplata
+                    </button>
+
+                    <button
+                      onClick={() => handleSectionChange("blagajna-pregled-isplata")}
+                      className={dropdownItemClass(activeSection === "blagajna-pregled-isplata")}
+                      style={activeSection === "blagajna-pregled-isplata" ? { background: PRIMARY } : {}}
+                    >
+                      <span
+                        className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
+                          activeSection === "blagajna-pregled-isplata" ? "" : "bg-[#fff7ed] dark:bg-[#2a1a08]"
+                        }`}
+                        style={activeSection === "blagajna-pregled-isplata" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                      >
+                        <ClipboardList
+                          size={13}
+                          style={{ color: activeSection === "blagajna-pregled-isplata" ? "#fff" : ACCENT }}
+                        />
+                      </span>
+                      Pregled isplata
+                    </button>
+                  </div>
+                </div>,
+                document.body,
+              )}
+          </div>
+
+          {/* Notifikacija */}
+          {notifMsg && (
             <div
-              key={uspjehKey}
+              key={notifKey}
               className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-lg"
               style={{
                 background: PRIMARY,
-                animation: "fadeInOut 10s ease forwards",
+                animation: "fadeInOut 5s ease forwards",
+                maxWidth: 360,
               }}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <circle cx="8" cy="8" r="8" fill="rgba(255,255,255,0.2)" />
                 <path d="M4.5 8L7 10.5L11.5 5.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              USPJEŠNO UNESENO
+              <span className="truncate">{notifMsg}</span>
             </div>
           )}
         </div>
@@ -368,8 +539,24 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
 
         {activeSection === "racun-storno" && <RacunStorno />}
 
-        {activeSection === "racun-pregled" && (
-          <RacunPregled />
+        {activeSection === "racun-pregled" && <RacunPregled />}
+
+        {activeSection === "blagajna-uplate" && <BlagajnaUplate onUplataSuccess={handleUplataSuccess} />}
+
+        {activeSection === "blagajna-isplate" && <BlagajnaIsplate onIsplataSuccess={handleIsplataSuccess} />}
+
+        {activeSection === "blagajna-pregled-uplata" && <BlagajnaPregledUplata />}
+
+        {activeSection === "blagajna-pregled-isplata" && (
+          <div className="bg-white dark:bg-[#0f2320] rounded-2xl shadow-sm border border-gray-100 dark:border-[#1a3d38] p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#fff7ed] dark:bg-[#2a1a08]">
+                <ClipboardList size={20} style={{ color: ACCENT }} />
+              </div>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-[#e6f4f2]">Pregled isplata</h2>
+            </div>
+            <p className="text-gray-500 dark:text-[#4a7a74]">Modul za pregled isplata — u pripremi.</p>
+          </div>
         )}
       </main>
     </div>
