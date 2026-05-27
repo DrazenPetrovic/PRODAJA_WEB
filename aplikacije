@@ -1,0 +1,179 @@
+server {
+    listen 80;
+    server_name _;
+	
+	
+	
+	
+# ========================
+# SEDMA APP - prodaja
+# ========================
+location = /prodaja {
+    return 301 /prodaja/;
+}
+
+location /prodaja/api/ {
+    proxy_pass http://localhost:3009/api/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_cache_bypass $http_upgrade;
+}
+
+location /prodaja/ {
+    alias /home/korisnik/PRODAJA_WEB/dist/;
+    index index.html;
+    try_files $uri $uri/ @prodaja;
+}
+
+location @prodaja {
+    rewrite ^/prodaja/(.*)$ /prodaja/index.html last;
+    root /home/korisnik/PRODAJA_WEB/dist;
+}
+
+
+
+# ========================
+# SESTA APP - sistem monitor
+# ========================
+location = /sistem {
+    return 301 /sistem/;
+}
+
+location /sistem/ {
+    proxy_pass http://localhost:3010/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_cache_bypass $http_upgrade;
+}
+
+# ========================
+# PETA APP - magacin
+# ========================
+location /magacin/api/ {
+    proxy_pass http://localhost:3005/api/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_cache_bypass $http_upgrade;
+}
+
+location /magacin/ {
+    alias /home/korisnik/MAGACIN_WEB/dist/;
+    index index.html;
+    try_files $uri $uri/ @magacin;
+}
+
+location @magacin {
+    rewrite ^/magacin/(.*)$ /magacin/index.html last;
+    root /home/korisnik/MAGACIN_WEB/dist;
+}
+
+
+# ========================
+# CETVRTA APP - kancelarija
+# ========================
+location /kancelarija/api/ {
+    proxy_pass http://localhost:3002/api/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_cache_bypass $http_upgrade;
+}
+
+location /kancelarija/ {
+    alias /home/korisnik/KANCELARIJA_WEB/dist/;
+    index index.html;
+    try_files $uri $uri/ @kancelarija;
+}
+
+location @kancelarija {
+    rewrite ^/kancelarija/(.*)$ /kancelarija/index.html last;
+    root /home/korisnik/KANCELARIJA_WEB/dist;
+}
+
+# ========================
+# TRECA APP - proizvodnja
+# ========================
+location /proizvodnja/api/ {
+    proxy_pass http://localhost:3004/api/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_cache_bypass $http_upgrade;
+}
+
+location /proizvodnja/ {
+    alias /home/korisnik/PROIZVODNJA_WEB/dist/;
+    index index.html;
+    try_files $uri $uri/ @proizvodnja;
+}
+
+location @proizvodnja {
+    rewrite ^/proizvodnja/(.*)$ /proizvodnja/index.html last;
+    root /home/korisnik/PROIZVODNJA_WEB/dist;
+}
+
+
+    # ========================
+    # DRUGA APP - mora biti PRIJE /
+    # ========================
+    location /knjigovodstvo/api/ {
+        proxy_pass http://localhost:3003/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /knjigovodstvo/ {
+        alias /home/korisnik/KNJIGOVODJA_WEB/dist/;
+        index index.html;
+        try_files $uri $uri/ @knjigovodstvo;
+    }
+
+    location @knjigovodstvo {
+        rewrite ^/knjigovodstvo/(.*)$ /knjigovodstvo/index.html last;
+        root /home/korisnik/KNJIGOVODJA_WEB/dist;
+    }
+    # ========================
+    # PRVA APP - komercijala
+    # ========================
+    root /home/korisnik/KOMERCIJALA_WEB/dist;
+    index index.html;
+
+    location /api/ {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

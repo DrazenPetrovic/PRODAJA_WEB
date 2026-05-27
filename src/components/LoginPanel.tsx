@@ -62,7 +62,7 @@ export function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
             <div className="px-8 pt-8 pb-7 text-center">
               <div className="flex justify-center mb-4">
                 <img
-                  src="/foto/IKONA.png"
+                  src={`${import.meta.env.BASE_URL}foto/IKONA.png`}
                   alt="Ikona"
                   className="h-24 object-contain"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -102,7 +102,7 @@ export function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
           <div className="flex justify-center mb-8">
             <div className="w-32 h-32 md:w-40 md:h-40 flex items-center justify-center">
               <img
-                src="/foto/IKONA.png"
+                src={`${import.meta.env.BASE_URL}foto/IKONA.png`}
                 alt="Ikona"
                 className="w-full h-full object-contain"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
