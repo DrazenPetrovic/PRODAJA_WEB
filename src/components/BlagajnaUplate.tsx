@@ -5,7 +5,9 @@ import {
   Building2,
   CalendarDays,
   CheckCircle2,
+  Landmark,
   Loader2,
+  Lock,
   MapPin,
   Search,
   X,
@@ -50,6 +52,15 @@ interface BlagajnaUplateProps {
 }
 
 export function BlagajnaUplate({ onUplataSuccess }: BlagajnaUplateProps) {
+  const [blagajnaOtvorena, setBlagajnaOtvorena] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/blagajna/stanje`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => setBlagajnaOtvorena(d.success && d.stanje?.status === "otvorena"))
+      .catch(() => setBlagajnaOtvorena(false));
+  }, []);
+
   const [partneri, setPartneri] = useState<Partner[]>([]);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   const [searchPartneri, setSearchPartneri] = useState("");
@@ -236,10 +247,39 @@ export function BlagajnaUplate({ onUplataSuccess }: BlagajnaUplateProps) {
     .map((id) => racuniPartnera.find((r) => r.id_racuna === id))
     .filter(Boolean) as RacunPartnera[];
 
+  const containerCls = "flex rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1a3d38] shadow-sm bg-white dark:bg-[#0f2320]";
+  const containerStyle = { height: "calc(100vh - 150px)" };
+
+  if (blagajnaOtvorena === null) {
+    return (
+      <div className={containerCls} style={containerStyle}>
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 size={28} className="animate-spin" style={{ color: PRIMARY }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (!blagajnaOtvorena) {
+    return (
+      <div className={containerCls} style={containerStyle}>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-8">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: `${PRIMARY}10` }}>
+            <Lock size={24} style={{ color: PRIMARY }} />
+          </div>
+          <p className="text-base font-bold text-gray-700 dark:text-[#c5e0db]">Blagajna je zatvorena</p>
+          <p className="text-sm text-gray-400 dark:text-[#4a7a74]">
+            Unos uplata nije moguć dok se blagajna ne otvori.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className="flex rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1a3d38] shadow-sm bg-white dark:bg-[#0f2320]"
-      style={{ height: "calc(100vh - 150px)" }}
+      className={containerCls}
+      style={containerStyle}
     >
       {/* ── LEFT PANEL (65%) ── */}
       <div className="w-[65%] flex-shrink-0 flex flex-col overflow-hidden border-r-2 border-gray-200 dark:border-[#1e4a44]">

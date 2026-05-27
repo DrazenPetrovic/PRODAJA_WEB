@@ -5,6 +5,8 @@ import { RacunStorno } from "./RacunStorno";
 import { BlagajnaUplate } from "./BlagajnaUplate";
 import { BlagajnaIsplate } from "./BlagajnaIsplate";
 import { BlagajnaPregledUplata } from "./BlagajnaPregledUplata";
+import { BlagajnaPregledIsplata } from "./BlagajnaPregledIsplata";
+import { BlagajnaStanje } from "./BlagajnaStanje";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 import {
@@ -13,6 +15,7 @@ import {
   ChevronDown,
   ClipboardList,
   FileText,
+  Landmark,
   LogOut,
   Moon,
   PenLine,
@@ -41,6 +44,7 @@ type MenuSection =
   | "racun-unos"
   | "racun-storno"
   | "racun-pregled"
+  | "blagajna-stanje"
   | "blagajna-uplate"
   | "blagajna-isplate"
   | "blagajna-pregled-uplata"
@@ -417,6 +421,27 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
                   </div>
                   <div className="p-2 space-y-0.5">
                     <button
+                      onClick={() => handleSectionChange("blagajna-stanje")}
+                      className={dropdownItemClass(activeSection === "blagajna-stanje")}
+                      style={activeSection === "blagajna-stanje" ? { background: PRIMARY } : {}}
+                    >
+                      <span
+                        className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
+                          activeSection === "blagajna-stanje" ? "" : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
+                        }`}
+                        style={activeSection === "blagajna-stanje" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                      >
+                        <Landmark
+                          size={13}
+                          style={{ color: activeSection === "blagajna-stanje" ? "#fff" : PRIMARY }}
+                        />
+                      </span>
+                      Stanje blagajne
+                    </button>
+
+                    <div className="h-px bg-gray-100 dark:bg-[#1a3d38] my-1" />
+
+                    <button
                       onClick={() => handleSectionChange("blagajna-uplate")}
                       className={dropdownItemClass(activeSection === "blagajna-uplate")}
                       style={activeSection === "blagajna-uplate" ? { background: PRIMARY } : {}}
@@ -541,23 +566,15 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
 
         {activeSection === "racun-pregled" && <RacunPregled />}
 
+        {activeSection === "blagajna-stanje" && <BlagajnaStanje />}
+
         {activeSection === "blagajna-uplate" && <BlagajnaUplate onUplataSuccess={handleUplataSuccess} />}
 
         {activeSection === "blagajna-isplate" && <BlagajnaIsplate onIsplataSuccess={handleIsplataSuccess} />}
 
         {activeSection === "blagajna-pregled-uplata" && <BlagajnaPregledUplata />}
 
-        {activeSection === "blagajna-pregled-isplata" && (
-          <div className="bg-white dark:bg-[#0f2320] rounded-2xl shadow-sm border border-gray-100 dark:border-[#1a3d38] p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#fff7ed] dark:bg-[#2a1a08]">
-                <ClipboardList size={20} style={{ color: ACCENT }} />
-              </div>
-              <h2 className="text-xl font-bold text-gray-800 dark:text-[#e6f4f2]">Pregled isplata</h2>
-            </div>
-            <p className="text-gray-500 dark:text-[#4a7a74]">Modul za pregled isplata — u pripremi.</p>
-          </div>
-        )}
+        {activeSection === "blagajna-pregled-isplata" && <BlagajnaPregledIsplata />}
       </main>
     </div>
   );

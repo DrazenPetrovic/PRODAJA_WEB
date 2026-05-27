@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 const PRIMARY = "#0F766E";
+const ACCENT = "#F97316";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3009";
 
 interface UplataStavka {
@@ -26,6 +27,7 @@ interface Uplata {
   nacin_placanja: string;
   biljeska: string | null;
   id_operatera: number;
+  naziv_operatera: string | null;
   stavke: UplataStavka[];
 }
 
@@ -261,18 +263,31 @@ export function BlagajnaPregledUplata() {
           </div>
         ) : (
           <ul className="p-3 space-y-2">
-            {filtered.map((u) => {
+            {filtered.map((u, idx) => {
               const otvoren = prosireni.has(u.uplata_id);
               const partnerNaziv = u.id_partnera
                 ? (partneriMap.get(u.id_partnera) ?? `Partner #${u.id_partnera}`)
                 : "—";
 
+              const datumDanas = fmtDatum(u.datum);
+              const prethodniDatum = idx > 0 ? fmtDatum(filtered[idx - 1].datum) : null;
+              const noviDatum = datumDanas !== prethodniDatum;
+
               return (
-                <li
-                  key={u.uplata_id}
-                  className="rounded-xl overflow-hidden border-2"
-                  style={{ borderColor: `${PRIMARY}30` }}
-                >
+                <li key={u.uplata_id}>
+                  {noviDatum && (
+                    <div className={`flex items-center gap-3 ${idx === 0 ? "mb-2" : "my-3"}`}>
+                      <div className="flex-1 h-px" style={{ background: `${ACCENT}40` }} />
+                      <span className="text-[10px] font-semibold tracking-wider px-1" style={{ color: ACCENT }}>
+                        {datumDanas}
+                      </span>
+                      <div className="flex-1 h-px" style={{ background: `${ACCENT}40` }} />
+                    </div>
+                  )}
+                  <div
+                    className="rounded-xl overflow-hidden border-2"
+                    style={{ borderColor: `${PRIMARY}30` }}
+                  >
                   <button
                     onClick={() => toggleProsiren(u.uplata_id)}
                     className="w-full text-left px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-[#0d2b27] transition-colors"
@@ -317,12 +332,16 @@ export function BlagajnaPregledUplata() {
                       </span>
                     )}
 
-                    {/* Iznos */}
+                    {/* Iznos + operater */}
                     <div className="w-32 flex-shrink-0 text-right">
                       <p className="text-base font-bold" style={{ color: PRIMARY }}>
                         {Number(u.ukupan_iznos).toLocaleString("bs-BA", { minimumFractionDigits: 2 })} KM
                       </p>
-                      <p className="text-[10px] text-gray-400 dark:text-[#4a7a74]">{u.nacin_placanja}</p>
+                      {u.naziv_operatera && (
+                        <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] truncate">
+                          {u.naziv_operatera}
+                        </p>
+                      )}
                     </div>
 
                     {/* Chevron */}
@@ -337,16 +356,17 @@ export function BlagajnaPregledUplata() {
                   {/* Prošireni — stavke */}
                   {otvoren && (
                     <div
-                      className="border-t border-gray-100 dark:border-[#1a3d38] px-5 py-3"
+                      className="border-t border-gray-100 dark:border-[#1a3d38] px-5 py-3 space-y-3"
                       style={{ background: `${PRIMARY}04` }}
                     >
+                      {/* Stavke */}
                       {u.stavke.length === 0 ? (
                         <p className="text-xs text-gray-400 dark:text-[#4a7a74] italic">
                           Slobodni iznos — nije vezan uz račun
                         </p>
                       ) : (
                         <div className="space-y-1.5">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-[#4a7a74] mb-2">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-[#4a7a74]">
                             Stavke uplate
                           </p>
                           {u.stavke.map((s) => (
@@ -367,6 +387,7 @@ export function BlagajnaPregledUplata() {
                       )}
                     </div>
                   )}
+                  </div>
                 </li>
               );
             })}

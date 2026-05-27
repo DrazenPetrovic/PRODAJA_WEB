@@ -62,8 +62,8 @@ export function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
             <div className="px-8 pt-8 pb-7 text-center">
               <div className="flex justify-center mb-4">
                 <img
-                  src="/foto/karpas_logo_software.png"
-                  alt="Karpas Logo"
+                  src="/foto/IKONA.png"
+                  alt="Ikona"
                   className="h-24 object-contain"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
@@ -102,17 +102,10 @@ export function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
           <div className="flex justify-center mb-8">
             <div className="w-32 h-32 md:w-40 md:h-40 flex items-center justify-center">
               <img
-                src="/foto/karpas_logo_software.png"
-                alt="Karpas Logo"
+                src="/foto/IKONA.png"
+                alt="Ikona"
                 className="w-full h-full object-contain"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = "none";
-                  const parent = target.parentElement;
-                  if (parent) {
-                    parent.innerHTML = `<div style="background:${PRIMARY}" class="p-5 md:p-6 rounded-full"><svg class="w-10 h-10 md:w-12 md:h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg></div>`;
-                  }
-                }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
               />
             </div>
           </div>
