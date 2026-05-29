@@ -7,6 +7,7 @@ import { BlagajnaIsplate } from "./BlagajnaIsplate";
 import { BlagajnaPregledUplata } from "./BlagajnaPregledUplata";
 import { BlagajnaPregledIsplata } from "./BlagajnaPregledIsplata";
 import { BlagajnaStanje } from "./BlagajnaStanje";
+import { KarticaPartnera } from "./KarticaPartnera";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 import {
@@ -14,6 +15,7 @@ import {
   ArrowUpCircle,
   ChevronDown,
   ClipboardList,
+  CreditCard,
   FileText,
   Landmark,
   LogOut,
@@ -24,6 +26,7 @@ import {
   Settings,
   Sun,
   TrendingUp,
+  Users,
   Wallet,
 } from "lucide-react";
 
@@ -37,7 +40,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type MenuKey = "file" | "racun" | "blagajna";
+type MenuKey = "file" | "racun" | "blagajna" | "kartica";
 
 type MenuSection =
   | "file-opcije"
@@ -49,6 +52,7 @@ type MenuSection =
   | "blagajna-isplate"
   | "blagajna-pregled-uplata"
   | "blagajna-pregled-isplata"
+  | "kartica-partnera"
   | null;
 
 export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) {
@@ -64,9 +68,11 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
   const fileBtnRef = useRef<HTMLButtonElement>(null);
   const racunBtnRef = useRef<HTMLButtonElement>(null);
   const blagajnaBtnRef = useRef<HTMLButtonElement>(null);
+  const karticaBtnRef = useRef<HTMLButtonElement>(null);
   const fileDropRef = useRef<HTMLDivElement>(null);
   const racunDropRef = useRef<HTMLDivElement>(null);
   const blagajnaDropRef = useRef<HTMLDivElement>(null);
+  const karticaDropRef = useRef<HTMLDivElement>(null);
 
   const isAdministrator = vrstaRadnika === 1;
   const roleLabel = isAdministrator ? "Administrator" : "Korisnik";
@@ -77,7 +83,8 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
       const inFile = fileBtnRef.current?.contains(t) || fileDropRef.current?.contains(t);
       const inRacun = racunBtnRef.current?.contains(t) || racunDropRef.current?.contains(t);
       const inBlagajna = blagajnaBtnRef.current?.contains(t) || blagajnaDropRef.current?.contains(t);
-      if (!inFile && !inRacun && !inBlagajna) setOpenMenu(null);
+      const inKartica = karticaBtnRef.current?.contains(t) || karticaDropRef.current?.contains(t);
+      if (!inFile && !inRacun && !inBlagajna && !inKartica) setOpenMenu(null);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -88,6 +95,7 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
       file: fileBtnRef,
       racun: racunBtnRef,
       blagajna: blagajnaBtnRef,
+      kartica: karticaBtnRef,
     };
     const ref = refs[menu];
     if (ref.current) {
@@ -149,6 +157,11 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
     activeSection === "blagajna-isplate" ||
     activeSection === "blagajna-pregled-uplata" ||
     activeSection === "blagajna-pregled-isplata"
+  );
+
+  const karticaActive = !!(
+    openMenu === "kartica" ||
+    activeSection === "kartica-partnera"
   );
 
   return (
@@ -524,6 +537,68 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
               )}
           </div>
 
+          {/* KARTICA */}
+          <div>
+            <button
+              ref={karticaBtnRef}
+              onClick={() => toggleMenu("kartica")}
+              className={navBtnBase}
+              style={navBtnStyle("kartica", karticaActive)}
+              onMouseEnter={() => setHoveredBtn("kartica")}
+              onMouseLeave={() => setHoveredBtn(null)}
+            >
+              <span
+                className="flex items-center justify-center w-6 h-6 rounded-lg"
+                style={{ background: "rgba(255,255,255,0.85)" }}
+              >
+                <CreditCard size={13} style={{ color: "#111" }} />
+              </span>
+              Kartica
+              <ChevronDown
+                size={14}
+                className={`transition-transform duration-200 ${openMenu === "kartica" ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {openMenu === "kartica" &&
+              ReactDOM.createPortal(
+                <div
+                  ref={karticaDropRef}
+                  style={{ position: "fixed", top: dropPos.top, left: dropPos.left, zIndex: 9999 }}
+                  className={`w-52 rounded-2xl border ${dropBg} shadow-2xl overflow-hidden`}
+                >
+                  <div
+                    className={`px-4 py-2.5 text-xs font-bold tracking-widest uppercase flex items-center gap-2 ${dropStripeBg}`}
+                    style={{ color: PRIMARY }}
+                  >
+                    <CreditCard size={12} />
+                    Kartica
+                  </div>
+                  <div className="p-2 space-y-0.5">
+                    <button
+                      onClick={() => handleSectionChange("kartica-partnera")}
+                      className={dropdownItemClass(activeSection === "kartica-partnera")}
+                      style={activeSection === "kartica-partnera" ? { background: PRIMARY } : {}}
+                    >
+                      <span
+                        className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
+                          activeSection === "kartica-partnera" ? "" : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
+                        }`}
+                        style={activeSection === "kartica-partnera" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                      >
+                        <Users
+                          size={13}
+                          style={{ color: activeSection === "kartica-partnera" ? "#fff" : PRIMARY }}
+                        />
+                      </span>
+                      Kartica partnera
+                    </button>
+                  </div>
+                </div>,
+                document.body,
+              )}
+          </div>
+
           {/* Notifikacija */}
           {notifMsg && (
             <div
@@ -575,6 +650,8 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
         {activeSection === "blagajna-pregled-uplata" && <BlagajnaPregledUplata />}
 
         {activeSection === "blagajna-pregled-isplata" && <BlagajnaPregledIsplata />}
+
+        {activeSection === "kartica-partnera" && <KarticaPartnera />}
       </main>
     </div>
   );

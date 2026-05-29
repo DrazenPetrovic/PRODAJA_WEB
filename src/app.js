@@ -11,6 +11,7 @@ import partneriRoutes from "./routes/partneri.routes.js";
 import artikliRoutes from "./routes/artikli.routes.js";
 import racunRoutes from "./routes/racun.routes.js";
 import blagajnaRoutes from "./routes/blagajna.routes.js";
+import karticeRoutes from "./routes/kartice.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -32,6 +33,7 @@ export const createApp = () => {
   app.use("/api/artikli", artikliRoutes);
   app.use("/api/racun", racunRoutes);
   app.use("/api/blagajna", blagajnaRoutes);
+  app.use("/api/kartice", karticeRoutes);
 
   if (env.NODE_ENV === "production") {
     const distPath = path.join(__dirname, "../dist");
