@@ -8,6 +8,7 @@ import {
   Loader2,
   MapPin,
   Package,
+  Plus,
   Printer,
   Receipt,
   Search,
@@ -26,6 +27,16 @@ interface Partner {
   naziv_partnera: string;
   adresa_partnera: string;
   Naziv_grada: string;
+}
+
+interface RazniPartner {
+  sifra_partnera: string;
+  naziv_partnera: string;
+}
+
+interface Grad {
+  id_grada: number;
+  naziv_grada: string;
 }
 
 interface Artikal {
@@ -68,6 +79,23 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const partnerInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Razni kupac (sifra 300) ───────────────────────────────
+  const [razniPartneri, setRazniPartneri] = useState<RazniPartner[]>([]);
+  const [loadingRazni, setLoadingRazni] = useState(false);
+  const [selectedRazni, setSelectedRazni] = useState<RazniPartner | null>(null);
+  const [razniDropdownOpen, setRazniDropdownOpen] = useState(false);
+  const [searchRazni, setSearchRazni] = useState("");
+  const razniDropdownRef = useRef<HTMLDivElement>(null);
+  const razniInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Dodaj novog partnera ──────────────────────────────────
+  const [showDodajPartnera, setShowDodajPartnera] = useState(false);
+  const [gradovi, setGradovi] = useState<Grad[]>([]);
+  const [loadingGradovi, setLoadingGradovi] = useState(false);
+  const [savingPartner, setSavingPartner] = useState(false);
+  const [noviPartner, setNoviPartner] = useState({ sifra: "", naziv: "", adresa: "", id_grada: "" });
+  const [errorDodaj, setErrorDodaj] = useState("");
+
   // ── Artikli ───────────────────────────────────────────────
   const [artikli, setArtikli] = useState<Artikal[]>([]);
   const [loadingArtikli, setLoadingArtikli] = useState(true);
@@ -100,6 +128,32 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
       .finally(() => setLoadingPartneri(false));
   }, []);
 
+  // ── Fetch razni partneri kad se odabere sifra 300 ─────────
+  useEffect(() => {
+    if (String(selectedPartner?.sifra_partnera) !== "300") {
+      setSelectedRazni(null);
+      setRazniPartneri([]);
+      return;
+    }
+    setLoadingRazni(true);
+    fetch(`${API_URL}/api/partneri/razni`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setRazniPartneri(d.data); })
+      .finally(() => setLoadingRazni(false));
+  }, [selectedPartner]);
+
+  // ── Zatvori razni dropdown klikom vani ────────────────────
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (razniDropdownRef.current && !razniDropdownRef.current.contains(e.target as Node)) {
+        setRazniDropdownOpen(false);
+        setSearchRazni("");
+      }
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
   // ── Fetch artikli ─────────────────────────────────────────
   useEffect(() => {
     fetch(`${API_URL}/api/artikli`, { credentials: "include" })
@@ -119,6 +173,13 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+
+  // ── Popuni napomenu raznim kupcem kad se otvori modal ────────
+  useEffect(() => {
+    if (pokaziPotvrdu && selectedRazni) {
+      setNapomena(`${selectedRazni.naziv_partnera}#${String(selectedRazni.sifra_partnera)}#`);
+    }
+  }, [pokaziPotvrdu]);
 
   // ── Fokus na količinu kad se odabere artikal ──────────────
   useEffect(() => {
@@ -142,8 +203,8 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
   const filteredPartneri = partneri.filter((p) => {
     const q = searchPartneri.toLowerCase();
     return (
-      p.naziv_partnera.toLowerCase().includes(q) ||
-      p.sifra_partnera.toLowerCase().includes(q) ||
+      (p.naziv_partnera ?? "").toLowerCase().includes(q) ||
+      String(p.sifra_partnera ?? "").toLowerCase().includes(q) ||
       (p.Naziv_grada ?? "").toLowerCase().includes(q)
     );
   });
@@ -160,6 +221,64 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
     setSearchPartneri("");
     setStavke([]);
     setOdabirArtikla(null);
+    setSelectedRazni(null);
+    setRazniPartneri([]);
+  };
+
+  const isRazni = String(selectedPartner?.sifra_partnera) === "300";
+  const filteredRazni = razniPartneri.filter((p) =>
+    p.naziv_partnera.toLowerCase().includes(searchRazni.toLowerCase()) ||
+    String(p.sifra_partnera).includes(searchRazni)
+  );
+
+  // ── Dodaj novog partnera helpers ──────────────────────────
+  const openDodajPartnera = () => {
+    setDropdownOpen(false);
+    const nextSifra = partneri.length > 0
+      ? String(Math.max(...partneri.map((p) => Number(p.sifra_partnera) || 0)) + 1)
+      : "1";
+    setNoviPartner({ sifra: nextSifra, naziv: "", adresa: "", id_grada: "" });
+    setErrorDodaj("");
+    if (gradovi.length === 0) {
+      setLoadingGradovi(true);
+      fetch(`${API_URL}/api/partneri/gradovi`, { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => { if (d.success) setGradovi(d.data); })
+        .finally(() => setLoadingGradovi(false));
+    }
+    setShowDodajPartnera(true);
+  };
+
+  const submitNoviPartner = async () => {
+    if (!noviPartner.sifra.trim() || !noviPartner.naziv.trim() || !noviPartner.id_grada) {
+      setErrorDodaj("Šifra, naziv i grad su obavezni");
+      return;
+    }
+    setSavingPartner(true);
+    setErrorDodaj("");
+    try {
+      const res = await fetch(`${API_URL}/api/partneri`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sifra_partnera: noviPartner.sifra.trim(),
+          naziv_partnera: noviPartner.naziv.trim(),
+          adresa_partnera: noviPartner.adresa.trim(),
+          id_grada: Number(noviPartner.id_grada),
+        }),
+      });
+      const d = await res.json();
+      if (!d.success) { setErrorDodaj(d.message ?? "Greška"); return; }
+      const partner: Partner = d.data;
+      setPartneri((prev) => [...prev, partner].sort((a, b) => a.naziv_partnera.localeCompare(b.naziv_partnera)));
+      setShowDodajPartnera(false);
+      handleSelectPartner(partner);
+    } catch {
+      setErrorDodaj("Greška pri slanju podataka");
+    } finally {
+      setSavingPartner(false);
+    }
   };
 
   // ── Artikli helpers ───────────────────────────────────────
@@ -358,7 +477,7 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
                         />
                       </div>
                     </div>
-                    <ul className="max-h-64 overflow-y-auto divide-y divide-gray-50 dark:divide-[#1a3d38]">
+                    <ul className="max-h-56 overflow-y-auto divide-y divide-gray-50 dark:divide-[#1a3d38]">
                       {filteredPartneri.length === 0 ? (
                         <li className="px-4 py-6 text-center text-xs text-gray-400 dark:text-[#4a7a74]">Nema rezultata</li>
                       ) : filteredPartneri.map((p) => (
@@ -378,6 +497,16 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
                         </li>
                       ))}
                     </ul>
+                    <div className="border-t border-gray-100 dark:border-[#1a3d38] p-2">
+                      <button
+                        onClick={openDodajPartnera}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-teal-50 dark:hover:bg-[#1a3d38]"
+                        style={{ color: PRIMARY }}
+                      >
+                        <Plus size={14} />
+                        Dodaj novog partnera
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -413,7 +542,7 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
                         />
                       </div>
                     </div>
-                    <ul className="max-h-64 overflow-y-auto divide-y divide-gray-50 dark:divide-[#1a3d38]">
+                    <ul className="max-h-56 overflow-y-auto divide-y divide-gray-50 dark:divide-[#1a3d38]">
                       {filteredPartneri.length === 0 ? (
                         <li className="px-4 py-6 text-center text-xs text-gray-400">Nema rezultata</li>
                       ) : filteredPartneri.map((p) => (
@@ -433,11 +562,93 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
                         </li>
                       ))}
                     </ul>
+                    <div className="border-t border-gray-100 dark:border-[#1a3d38] p-2">
+                      <button
+                        onClick={openDodajPartnera}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-teal-50 dark:hover:bg-[#1a3d38]"
+                        style={{ color: PRIMARY }}
+                      >
+                        <Plus size={14} />
+                        Dodaj novog partnera
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
             )}
           </div>
+
+          {/* ── RAZNI KUPAC panel ─────────────────────────────── */}
+          {isRazni && (
+            <div
+              className="flex-shrink-0 px-6 py-3 border-b border-gray-100 dark:border-[#1a3d38]"
+              style={{ background: `${ACCENT}08` }}
+            >
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: ACCENT }}>
+                Razni kupac — odaberi iz liste
+              </p>
+              <div className="relative" ref={razniDropdownRef}>
+                <button
+                  onClick={() => { setRazniDropdownOpen(true); setTimeout(() => razniInputRef.current?.focus(), 50); }}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 transition-all text-left bg-white dark:bg-[#0a1e1c]"
+                  style={{ borderColor: razniDropdownOpen ? ACCENT : selectedRazni ? `${ACCENT}80` : "#e5e7eb" }}
+                >
+                  <Search size={14} className="flex-shrink-0" style={{ color: selectedRazni ? ACCENT : "#9ca3af" }} />
+                  <span className="flex-1 text-sm truncate" style={{ color: selectedRazni ? ACCENT : "#9ca3af" }}>
+                    {loadingRazni
+                      ? "Učitavanje..."
+                      : selectedRazni
+                      ? selectedRazni.naziv_partnera
+                      : "Odaberi raznog kupca..."}
+                  </span>
+                  {selectedRazni && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedRazni(null); }}
+                      className="p-0.5 rounded text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                  <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 flex-shrink-0 ${razniDropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {razniDropdownOpen && (
+                  <div className="absolute z-50 top-[calc(100%+4px)] left-0 right-0 rounded-xl border border-gray-200 dark:border-[#1e4a44] shadow-2xl bg-white dark:bg-[#0f2320] overflow-hidden">
+                    <div className="p-2 border-b border-gray-100 dark:border-[#1a3d38]">
+                      <div className="relative">
+                        <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          ref={razniInputRef}
+                          type="text"
+                          value={searchRazni}
+                          onChange={(e) => setSearchRazni(e.target.value)}
+                          placeholder="Pretraži..."
+                          className={`${inputCls} pl-8`}
+                          onFocus={(e) => (e.target.style.borderColor = ACCENT)}
+                          onBlur={(e) => (e.target.style.borderColor = "")}
+                        />
+                      </div>
+                    </div>
+                    <ul className="max-h-52 overflow-y-auto divide-y divide-gray-50 dark:divide-[#1a3d38]">
+                      {filteredRazni.length === 0 ? (
+                        <li className="px-4 py-5 text-center text-xs text-gray-400">Nema rezultata</li>
+                      ) : filteredRazni.map((p) => (
+                        <li key={p.sifra_partnera}>
+                          <button
+                            onClick={() => { setSelectedRazni(p); setRazniDropdownOpen(false); setSearchRazni(""); }}
+                            className="w-full text-left px-4 py-2.5 hover:bg-orange-50 dark:hover:bg-[#2a1a0a] transition-colors"
+                          >
+                            <p className="text-sm font-medium text-gray-800 dark:text-[#e6f4f2]">{p.naziv_partnera}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">Šifra: {p.sifra_partnera}</p>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Sadržaj — unos ili stavke */}
           <div className="flex-1 overflow-y-auto">
@@ -837,6 +1048,7 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
                       });
                       setStavke([]);
                       setSelectedPartner(null);
+                      setSelectedRazni(null);
                       onUspjeh?.();
                     } else {
                       alert(d.message ?? "Greška pri kreiranju računa");
@@ -872,6 +1084,119 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
             setNapomena("");
           }}
         />
+      )}
+
+      {/* ══ MODAL DODAJ NOVOG PARTNERA ════════════════════════ */}
+      {showDodajPartnera && ReactDOM.createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={() => setShowDodajPartnera(false)}
+        >
+          <div
+            className="relative bg-white dark:bg-[#0f2320] rounded-2xl shadow-2xl border border-gray-100 dark:border-[#1a3d38] w-full max-w-sm mx-4 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Zaglavlje */}
+            <div className="px-6 pt-6 pb-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${PRIMARY}15` }}>
+                <Plus size={20} style={{ color: PRIMARY }} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-gray-800 dark:text-[#e6f4f2]">Novi partner</h3>
+                <p className="text-xs text-gray-400 dark:text-[#4a7a74]">Unesi podatke novog partnera</p>
+              </div>
+              <button
+                onClick={() => setShowDodajPartnera(false)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-[#1a3d38] transition-all"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="h-px mx-6 bg-gray-100 dark:bg-[#1a3d38]" />
+
+            <div className="px-6 py-4 space-y-3">
+              <div>
+                <Label>Šifra partnera *</Label>
+                <input
+                  type="text"
+                  placeholder="npr. 100123"
+                  value={noviPartner.sifra}
+                  onChange={(e) => setNoviPartner((p) => ({ ...p, sifra: e.target.value }))}
+                  className={inputCls}
+                  onFocus={(e) => (e.target.style.borderColor = PRIMARY)}
+                  onBlur={(e) => (e.target.style.borderColor = "")}
+                />
+              </div>
+              <div>
+                <Label>Naziv partnera *</Label>
+                <input
+                  type="text"
+                  placeholder="Puno ime / naziv firme"
+                  value={noviPartner.naziv}
+                  onChange={(e) => setNoviPartner((p) => ({ ...p, naziv: e.target.value }))}
+                  className={inputCls}
+                  onFocus={(e) => (e.target.style.borderColor = PRIMARY)}
+                  onBlur={(e) => (e.target.style.borderColor = "")}
+                />
+              </div>
+              <div>
+                <Label>Adresa</Label>
+                <input
+                  type="text"
+                  placeholder="Ulica i broj"
+                  value={noviPartner.adresa}
+                  onChange={(e) => setNoviPartner((p) => ({ ...p, adresa: e.target.value }))}
+                  className={inputCls}
+                  onFocus={(e) => (e.target.style.borderColor = PRIMARY)}
+                  onBlur={(e) => (e.target.style.borderColor = "")}
+                />
+              </div>
+              <div>
+                <Label>Grad *</Label>
+                <select
+                  value={noviPartner.id_grada}
+                  onChange={(e) => setNoviPartner((p) => ({ ...p, id_grada: e.target.value }))}
+                  className={inputCls}
+                  style={noviPartner.id_grada ? { borderColor: PRIMARY } : {}}
+                  disabled={loadingGradovi}
+                >
+                  <option value="">{loadingGradovi ? "Učitavanje..." : "Odaberi grad..."}</option>
+                  {gradovi.map((g) => (
+                    <option key={g.id_grada} value={g.id_grada}>{g.naziv_grada}</option>
+                  ))}
+                </select>
+              </div>
+              {errorDodaj && (
+                <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+                  <AlertCircle size={13} /> {errorDodaj}
+                </p>
+              )}
+            </div>
+
+            <div className="px-6 pb-6 flex gap-3">
+              <button
+                onClick={() => setShowDodajPartnera(false)}
+                className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-gray-200 dark:border-[#1e4a44] text-gray-600 dark:text-[#4a7a74] hover:bg-gray-50 dark:hover:bg-[#1a3d38] transition-all"
+              >
+                Odustani
+              </button>
+              <button
+                disabled={savingPartner}
+                onClick={submitNoviPartner}
+                className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-white transition-all hover:brightness-110 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ background: PRIMARY }}
+              >
+                {savingPartner
+                  ? <><Loader2 size={14} className="animate-spin" /> Snimanje...</>
+                  : <><Plus size={14} /> Dodaj partnera</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </>
   );

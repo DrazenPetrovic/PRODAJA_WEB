@@ -104,8 +104,8 @@ export function KarticaPartnera() {
   const filteredPartneri = partneri.filter((p) => {
     const q = searchPartneri.toLowerCase();
     return (
-      p.naziv_partnera.toLowerCase().includes(q) ||
-      p.sifra_partnera.toLowerCase().includes(q) ||
+      (p.naziv_partnera ?? "").toLowerCase().includes(q) ||
+      String(p.sifra_partnera ?? "").toLowerCase().includes(q) ||
       (p.Naziv_grada ?? "").toLowerCase().includes(q)
     );
   });
