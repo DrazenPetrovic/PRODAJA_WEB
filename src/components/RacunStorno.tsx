@@ -10,7 +10,11 @@ import {
   X,
 } from "lucide-react";
 import { PrintModal, type PrintJob } from "./print/PrintModal";
-import { RacunTemplate, type RacunZaglavlje, type RacunStavka } from "./print/templates/RacunTemplate";
+import {
+  RacunTemplate,
+  type RacunZaglavlje,
+  type RacunStavka,
+} from "./print/templates/RacunTemplate";
 
 const PRIMARY = "#0F766E";
 const ACCENT = "#F97316";
@@ -54,14 +58,20 @@ interface StornoResult {
 
 export function RacunStorno() {
   const [zaglavlja, setZaglavlja] = useState<Zaglavlje[]>([]);
-  const [stavkeMap, setStavkeMap] = useState<Map<number, StavkaPregleda[]>>(new Map());
-  const [partneriMap, setPartneriMap] = useState<Map<number, string>>(new Map());
+  const [stavkeMap, setStavkeMap] = useState<Map<number, StavkaPregleda[]>>(
+    new Map(),
+  );
+  const [partneriMap, setPartneriMap] = useState<Map<number, string>>(
+    new Map(),
+  );
   const [loading, setLoading] = useState(true);
   const [selectedRacun, setSelectedRacun] = useState<Zaglavlje | null>(null);
   const [napomena, setNapomena] = useState("");
   const [slanje, setSlanje] = useState(false);
   const [greska, setGreska] = useState<string | null>(null);
-  const [kreiraniStorno, setKreiraniStorno] = useState<StornoResult | null>(null);
+  const [kreiraniStorno, setKreiraniStorno] = useState<StornoResult | null>(
+    null,
+  );
   const [printJob, setPrintJob] = useState<PrintJob | null>(null);
 
   const ucitaj = async () => {
@@ -71,11 +81,14 @@ export function RacunStorno() {
         fetch(`${API_URL}/api/racun/pregled`, { credentials: "include" }),
         fetch(`${API_URL}/api/partneri`, { credentials: "include" }),
       ]);
-      const [dRacuni, dPartneri] = await Promise.all([resRacuni.json(), resPartneri.json()]);
+      const [dRacuni, dPartneri] = await Promise.all([
+        resRacuni.json(),
+        resPartneri.json(),
+      ]);
 
       if (dRacuni.success) {
         const aktivni = (dRacuni.zaglavlja as Zaglavlje[]).filter(
-          (r) => r.vrsta_racuna === "Racun" && r.status_racuna === "Aktivan"
+          (r) => r.vrsta_racuna === "Racun" && r.status_racuna === "Aktivan",
         );
         setZaglavlja(aktivni);
         const map = new Map<number, StavkaPregleda[]>();
@@ -88,9 +101,11 @@ export function RacunStorno() {
       }
       if (dPartneri.success) {
         const pm = new Map<number, string>();
-        dPartneri.data.forEach((p: { sifra_partnera: string; naziv_partnera: string }) => {
-          pm.set(Number(p.sifra_partnera), p.naziv_partnera);
-        });
+        dPartneri.data.forEach(
+          (p: { sifra_partnera: string; naziv_partnera: string }) => {
+            pm.set(Number(p.sifra_partnera), p.naziv_partnera);
+          },
+        );
         setPartneriMap(pm);
       }
     } finally {
@@ -98,7 +113,9 @@ export function RacunStorno() {
     }
   };
 
-  useEffect(() => { ucitaj(); }, []);
+  useEffect(() => {
+    ucitaj();
+  }, []);
 
   const formatDatum = (dt: string) => {
     const d = new Date(dt);
@@ -142,7 +159,9 @@ export function RacunStorno() {
         return;
       }
       const stavke = stavkeMap.get(selectedRacun.id_racuna) ?? [];
-      const nazivPartnera = partneriMap.get(selectedRacun.id_partnera) ?? `ID ${selectedRacun.id_partnera}`;
+      const nazivPartnera =
+        partneriMap.get(selectedRacun.id_partnera) ??
+        `ID ${selectedRacun.id_partnera}`;
       setKreiraniStorno({
         idStornoRacuna: data.idStornoRacuna,
         brojStornoRacuna: data.brojStornoRacuna,
@@ -152,7 +171,9 @@ export function RacunStorno() {
         nazivPartnera,
         napomena: napomena.slice(0, 254),
       });
-      setZaglavlja((prev) => prev.filter((r) => r.id_racuna !== selectedRacun.id_racuna));
+      setZaglavlja((prev) =>
+        prev.filter((r) => r.id_racuna !== selectedRacun.id_racuna),
+      );
     } catch {
       setGreska("Greška u komunikaciji sa serverom");
     } finally {
@@ -168,7 +189,9 @@ export function RacunStorno() {
       referentni_broj: kreiraniStorno.originalRacun.referentni_broj,
       datum_racuna: kreiraniStorno.datumStorna,
       id_partnera: kreiraniStorno.originalRacun.id_partnera,
-      ukupno_za_naplatu: -Math.abs(Number(kreiraniStorno.originalRacun.ukupno_za_naplatu)),
+      ukupno_za_naplatu: -Math.abs(
+        Number(kreiraniStorno.originalRacun.ukupno_za_naplatu),
+      ),
       napomena_operatera: kreiraniStorno.napomena || null,
       id_operatera: kreiraniStorno.originalRacun.id_operatera,
       vrsta_racuna: "Storno racun",
@@ -181,6 +204,7 @@ export function RacunStorno() {
     }));
     setPrintJob({
       title: `Storno račun — ${kreiraniStorno.brojStornoRacuna}`,
+      orientation: "portrait",
       component: (
         <RacunTemplate
           racun={racunZaPrint}
@@ -189,6 +213,8 @@ export function RacunStorno() {
         />
       ),
       defaultFormat: "A5",
+      lockOrientation: true,
+      lockFormat: true,
     });
   };
 
@@ -199,14 +225,22 @@ export function RacunStorno() {
         style={{ height: "calc(100vh - 150px)" }}
       >
         <div className="flex flex-col items-center gap-3">
-          <Loader2 size={28} className="animate-spin" style={{ color: PRIMARY }} />
-          <span className="text-sm text-gray-400 dark:text-[#4a7a74]">Učitavanje računa...</span>
+          <Loader2
+            size={28}
+            className="animate-spin"
+            style={{ color: PRIMARY }}
+          />
+          <span className="text-sm text-gray-400 dark:text-[#4a7a74]">
+            Učitavanje računa...
+          </span>
         </div>
       </div>
     );
   }
 
-  const selectedStavke = selectedRacun ? (stavkeMap.get(selectedRacun.id_racuna) ?? []) : [];
+  const selectedStavke = selectedRacun
+    ? (stavkeMap.get(selectedRacun.id_racuna) ?? [])
+    : [];
 
   return (
     <>
@@ -220,12 +254,19 @@ export function RacunStorno() {
           style={{ background: `${ACCENT}08` }}
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: ACCENT }}>
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ background: ACCENT }}
+            >
               <RotateCcw size={14} className="text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-gray-800 dark:text-[#e6f4f2]">Storniranje računa</h2>
-              <p className="text-[10px] text-gray-400 dark:text-[#4a7a74]">{zaglavlja.length} aktivnih računa</p>
+              <h2 className="text-sm font-bold text-gray-800 dark:text-[#e6f4f2]">
+                Storniranje računa
+              </h2>
+              <p className="text-[10px] text-gray-400 dark:text-[#4a7a74]">
+                {zaglavlja.length} aktivnih računa
+              </p>
             </div>
           </div>
           <button
@@ -241,8 +282,14 @@ export function RacunStorno() {
         <div className="flex-1 overflow-y-auto">
           {zaglavlja.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-8">
-              <RotateCcw size={36} className="mb-3 opacity-10 dark:opacity-5" style={{ color: ACCENT }} />
-              <p className="text-sm text-gray-300 dark:text-[#2a5a54]">Nema aktivnih računa za storniranje</p>
+              <RotateCcw
+                size={36}
+                className="mb-3 opacity-10 dark:opacity-5"
+                style={{ color: ACCENT }}
+              />
+              <p className="text-sm text-gray-300 dark:text-[#2a5a54]">
+                Nema aktivnih računa za storniranje
+              </p>
             </div>
           ) : (
             <ul className="p-3 space-y-2">
@@ -268,7 +315,10 @@ export function RacunStorno() {
 
                       {/* Broj + datum */}
                       <div className="w-52 flex-shrink-0">
-                        <p className="text-sm font-bold leading-snug" style={{ color: PRIMARY }}>
+                        <p
+                          className="text-sm font-bold leading-snug"
+                          style={{ color: PRIMARY }}
+                        >
                           {r.broj_racuna}
                         </p>
                         <p className="text-[11px] text-gray-400 dark:text-[#4a7a74] mt-0.5">
@@ -281,26 +331,39 @@ export function RacunStorno() {
 
                       {/* Partner */}
                       <div className="flex-1 min-w-0 text-center">
-                        <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] uppercase tracking-wider">Partner</p>
+                        <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] uppercase tracking-wider">
+                          Partner
+                        </p>
                         <p className="text-sm font-semibold text-gray-700 dark:text-[#c5e0db] truncate">
-                          {partneriMap.get(r.id_partnera) ?? `ID ${r.id_partnera}`}
+                          {partneriMap.get(r.id_partnera) ??
+                            `ID ${r.id_partnera}`}
                         </p>
                       </div>
 
                       {/* Stavki */}
                       <div className="w-16 text-center flex-shrink-0">
-                        <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] uppercase tracking-wider">Stavki</p>
-                        <p className="text-sm font-semibold text-gray-700 dark:text-[#c5e0db]">{stavke.length}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] uppercase tracking-wider">
+                          Stavki
+                        </p>
+                        <p className="text-sm font-semibold text-gray-700 dark:text-[#c5e0db]">
+                          {stavke.length}
+                        </p>
                       </div>
 
                       {/* Ukupno */}
                       <div className="w-28 text-right flex-shrink-0">
-                        <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] uppercase tracking-wider">Ukupno</p>
-                        <p className="text-sm font-bold" style={{ color: ACCENT }}>
+                        <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] uppercase tracking-wider">
+                          Ukupno
+                        </p>
+                        <p
+                          className="text-sm font-bold"
+                          style={{ color: ACCENT }}
+                        >
                           {Number(r.ukupno_za_naplatu).toLocaleString("bs-BA", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
-                          })} KM
+                          })}{" "}
+                          KM
                         </p>
                       </div>
 
@@ -334,21 +397,27 @@ export function RacunStorno() {
             onClick={(e) => e.target === e.currentTarget && zatvoriModal()}
           >
             <div className="bg-white dark:bg-[#0f2320] rounded-2xl shadow-2xl w-[640px] max-w-[95vw] max-h-[90vh] flex flex-col overflow-hidden">
-
               {/* Modal header */}
               <div
                 className="flex items-center justify-between px-6 py-4 flex-shrink-0"
                 style={{ background: kreiraniStorno ? PRIMARY : ACCENT }}
               >
                 <div className="flex items-center gap-3 text-white">
-                  {kreiraniStorno ? <CheckCircle2 size={18} /> : <RotateCcw size={18} />}
+                  {kreiraniStorno ? (
+                    <CheckCircle2 size={18} />
+                  ) : (
+                    <RotateCcw size={18} />
+                  )}
                   <span className="font-bold text-sm">
                     {kreiraniStorno
                       ? `STORNIRAN: ${selectedRacun.broj_racuna}`
                       : `Storniranje: ${selectedRacun.broj_racuna}`}
                   </span>
                 </div>
-                <button onClick={zatvoriModal} className="text-white/60 hover:text-white transition-colors">
+                <button
+                  onClick={zatvoriModal}
+                  className="text-white/60 hover:text-white transition-colors"
+                >
                   <X size={19} />
                 </button>
               </div>
@@ -365,19 +434,31 @@ export function RacunStorno() {
                       <CheckCircle2 size={32} style={{ color: PRIMARY }} />
                     </div>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: PRIMARY }}>
+                      <p
+                        className="text-xs font-bold uppercase tracking-widest mb-1"
+                        style={{ color: PRIMARY }}
+                      >
                         Račun uspješno storniran
                       </p>
-                      <p className="text-2xl font-bold" style={{ color: ACCENT }}>
+                      <p
+                        className="text-2xl font-bold"
+                        style={{ color: ACCENT }}
+                      >
                         {kreiraniStorno.brojStornoRacuna}
                       </p>
                     </div>
                     <div className="w-full grid grid-cols-2 gap-3 mt-2">
                       <div
                         className="rounded-xl p-3 text-left"
-                        style={{ background: `${PRIMARY}0a`, border: `1px solid ${PRIMARY}25` }}
+                        style={{
+                          background: `${PRIMARY}0a`,
+                          border: `1px solid ${PRIMARY}25`,
+                        }}
                       >
-                        <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: PRIMARY }}>
+                        <p
+                          className="text-[10px] font-bold uppercase tracking-wider mb-1"
+                          style={{ color: PRIMARY }}
+                        >
                           Partner
                         </p>
                         <p className="text-sm font-semibold text-gray-800 dark:text-[#e6f4f2]">
@@ -386,21 +467,38 @@ export function RacunStorno() {
                       </div>
                       <div
                         className="rounded-xl p-3 text-left"
-                        style={{ background: `${ACCENT}0a`, border: `1px solid ${ACCENT}25` }}
+                        style={{
+                          background: `${ACCENT}0a`,
+                          border: `1px solid ${ACCENT}25`,
+                        }}
                       >
-                        <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: ACCENT }}>
+                        <p
+                          className="text-[10px] font-bold uppercase tracking-wider mb-1"
+                          style={{ color: ACCENT }}
+                        >
                           Storno iznos
                         </p>
-                        <p className="text-sm font-bold" style={{ color: ACCENT }}>
-                          -{Math.abs(Number(kreiraniStorno.originalRacun.ukupno_za_naplatu)).toLocaleString("bs-BA", {
+                        <p
+                          className="text-sm font-bold"
+                          style={{ color: ACCENT }}
+                        >
+                          -
+                          {Math.abs(
+                            Number(
+                              kreiraniStorno.originalRacun.ukupno_za_naplatu,
+                            ),
+                          ).toLocaleString("bs-BA", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
-                          })} KM
+                          })}{" "}
+                          KM
                         </p>
                       </div>
                     </div>
                     <p className="text-xs text-gray-400 dark:text-[#4a7a74]">
-                      Originalni račun <strong>{selectedRacun.broj_racuna}</strong> je označen kao storniran i uklonjen iz liste.
+                      Originalni račun{" "}
+                      <strong>{selectedRacun.broj_racuna}</strong> je označen
+                      kao storniran i uklonjen iz liste.
                     </p>
                   </div>
                 ) : (
@@ -410,13 +508,20 @@ export function RacunStorno() {
                     <div className="grid grid-cols-2 gap-3 mb-5">
                       <div
                         className="rounded-xl p-3"
-                        style={{ background: `${PRIMARY}0a`, border: `1px solid ${PRIMARY}25` }}
+                        style={{
+                          background: `${PRIMARY}0a`,
+                          border: `1px solid ${PRIMARY}25`,
+                        }}
                       >
-                        <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: PRIMARY }}>
+                        <p
+                          className="text-[10px] font-bold uppercase tracking-wider mb-1"
+                          style={{ color: PRIMARY }}
+                        >
                           Partner
                         </p>
                         <p className="text-sm font-semibold text-gray-800 dark:text-[#e6f4f2]">
-                          {partneriMap.get(selectedRacun.id_partnera) ?? `ID ${selectedRacun.id_partnera}`}
+                          {partneriMap.get(selectedRacun.id_partnera) ??
+                            `ID ${selectedRacun.id_partnera}`}
                         </p>
                         <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] mt-1">
                           {formatDatum(selectedRacun.datum_racuna)}
@@ -424,16 +529,29 @@ export function RacunStorno() {
                       </div>
                       <div
                         className="rounded-xl p-3"
-                        style={{ background: `${ACCENT}0a`, border: `1px solid ${ACCENT}25` }}
+                        style={{
+                          background: `${ACCENT}0a`,
+                          border: `1px solid ${ACCENT}25`,
+                        }}
                       >
-                        <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: ACCENT }}>
+                        <p
+                          className="text-[10px] font-bold uppercase tracking-wider mb-1"
+                          style={{ color: ACCENT }}
+                        >
                           Iznos za storno
                         </p>
-                        <p className="text-sm font-bold" style={{ color: ACCENT }}>
-                          -{Math.abs(Number(selectedRacun.ukupno_za_naplatu)).toLocaleString("bs-BA", {
+                        <p
+                          className="text-sm font-bold"
+                          style={{ color: ACCENT }}
+                        >
+                          -
+                          {Math.abs(
+                            Number(selectedRacun.ukupno_za_naplatu),
+                          ).toLocaleString("bs-BA", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
-                          })} KM
+                          })}{" "}
+                          KM
                         </p>
                         <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] mt-1">
                           {selectedStavke.length} stavki
@@ -444,31 +562,51 @@ export function RacunStorno() {
                     {/* Stavke — negativne */}
                     {selectedStavke.length > 0 && (
                       <div className="mb-5">
-                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: ACCENT }}>
+                        <p
+                          className="text-[10px] font-bold uppercase tracking-widest mb-2"
+                          style={{ color: ACCENT }}
+                        >
                           Stavke koje se storniraju
                         </p>
                         <table className="w-full text-xs">
                           <thead>
                             <tr className="border-b border-gray-200 dark:border-[#1a3d38]">
-                              <th className="text-left pb-1.5 text-gray-400 dark:text-[#4a7a74] font-semibold">Artikal</th>
-                              <th className="text-right pb-1.5 text-gray-400 dark:text-[#4a7a74] font-semibold">Kol.</th>
-                              <th className="text-right pb-1.5 text-gray-400 dark:text-[#4a7a74] font-semibold">Cijena</th>
-                              <th className="text-right pb-1.5 text-gray-400 dark:text-[#4a7a74] font-semibold">Ukupno</th>
+                              <th className="text-left pb-1.5 text-gray-400 dark:text-[#4a7a74] font-semibold">
+                                Artikal
+                              </th>
+                              <th className="text-right pb-1.5 text-gray-400 dark:text-[#4a7a74] font-semibold">
+                                Kol.
+                              </th>
+                              <th className="text-right pb-1.5 text-gray-400 dark:text-[#4a7a74] font-semibold">
+                                Cijena
+                              </th>
+                              <th className="text-right pb-1.5 text-gray-400 dark:text-[#4a7a74] font-semibold">
+                                Ukupno
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100 dark:divide-[#1a3d38]">
                             {selectedStavke.map((s) => (
                               <tr key={s.id_stavke}>
-                                <td className="py-1.5 font-mono font-semibold" style={{ color: PRIMARY }}>
+                                <td
+                                  className="py-1.5 font-mono font-semibold"
+                                  style={{ color: PRIMARY }}
+                                >
                                   {s.id_artikla}
                                 </td>
-                                <td className="py-1.5 text-right font-bold" style={{ color: ACCENT }}>
+                                <td
+                                  className="py-1.5 text-right font-bold"
+                                  style={{ color: ACCENT }}
+                                >
                                   -{Math.abs(Number(s.kolicina_artikla))}
                                 </td>
                                 <td className="py-1.5 text-right text-gray-600 dark:text-[#a8d5cf]">
                                   {Number(s.maloprodajna_cijena).toFixed(2)}
                                 </td>
-                                <td className="py-1.5 text-right font-bold" style={{ color: ACCENT }}>
+                                <td
+                                  className="py-1.5 text-right font-bold"
+                                  style={{ color: ACCENT }}
+                                >
                                   -{Math.abs(Number(s.ukupno)).toFixed(2)}
                                 </td>
                               </tr>
@@ -476,11 +614,21 @@ export function RacunStorno() {
                           </tbody>
                           <tfoot>
                             <tr className="border-t-2 border-gray-200 dark:border-[#1e4a44]">
-                              <td colSpan={3} className="pt-2 text-right font-bold text-gray-500 dark:text-[#a8d5cf]">
+                              <td
+                                colSpan={3}
+                                className="pt-2 text-right font-bold text-gray-500 dark:text-[#a8d5cf]"
+                              >
                                 Ukupno storno:
                               </td>
-                              <td className="pt-2 text-right font-bold" style={{ color: ACCENT }}>
-                                -{Math.abs(Number(selectedRacun.ukupno_za_naplatu)).toFixed(2)} KM
+                              <td
+                                className="pt-2 text-right font-bold"
+                                style={{ color: ACCENT }}
+                              >
+                                -
+                                {Math.abs(
+                                  Number(selectedRacun.ukupno_za_naplatu),
+                                ).toFixed(2)}{" "}
+                                KM
                               </td>
                             </tr>
                           </tfoot>
@@ -495,7 +643,9 @@ export function RacunStorno() {
                       </label>
                       <textarea
                         value={napomena}
-                        onChange={(e) => setNapomena(e.target.value.slice(0, 254))}
+                        onChange={(e) =>
+                          setNapomena(e.target.value.slice(0, 254))
+                        }
                         rows={3}
                         placeholder="Razlog storniranja..."
                         className="w-full rounded-xl border border-gray-200 dark:border-[#1e4a44] px-3 py-2.5 text-sm bg-white dark:bg-[#0a1e1c] text-gray-700 dark:text-[#c5e0db] placeholder-gray-300 dark:placeholder-[#2a5a54] resize-none focus:outline-none focus:ring-2 focus:ring-orange-300 dark:focus:ring-orange-900"
@@ -508,8 +658,13 @@ export function RacunStorno() {
                     {/* Greška */}
                     {greska && (
                       <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-                        <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />
-                        <p className="text-xs font-semibold text-red-600 dark:text-red-400">{greska}</p>
+                        <AlertTriangle
+                          size={14}
+                          className="text-red-500 flex-shrink-0"
+                        />
+                        <p className="text-xs font-semibold text-red-600 dark:text-red-400">
+                          {greska}
+                        </p>
                       </div>
                     )}
                   </>
@@ -565,7 +720,9 @@ export function RacunStorno() {
           document.body,
         )}
 
-      {printJob && <PrintModal job={printJob} onClose={() => setPrintJob(null)} />}
+      {printJob && (
+        <PrintModal job={printJob} onClose={() => setPrintJob(null)} />
+      )}
     </>
   );
 }

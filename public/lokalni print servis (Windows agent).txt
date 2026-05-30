@@ -1,0 +1,53 @@
+lokalni print servis (Windows agent) koji radi kao “most” između tvoje web aplikacije i štampača, kao Crystal logika.
+
+Predlog koji je najstabilniji:
+
+Agent kao mala Windows aplikacija (C# .NET), instalirana na operaterskom računaru.
+Tvoja web aplikacija šalje print posao agentu na localhost (npr. http://127.0.0.1:4567/print).
+Agent prima PDF + tip papira (A5 ili A4) i šalje direktno printer driveru sa zadatim paper size.
+Štampač automatski bira ladicu po papiru, bez ručnog biranja u browser dijalogu.
+Kako izgleda tok:
+
+UI klikne “Štampaj račun”.
+Frontend zove backend da dobije PDF računa.
+Frontend pošalje taj PDF lokalnom agentu sa paperSize: "A5".
+Agent štampa bez otvaranja browser print prozora.
+Minimalni API agenta:
+
+POST /print
+Body:
+{
+  "documentBase64": "JVBERi0xLjQKJ...",
+  "paperSize": "A5",
+  "printerName": "HP LaserJet ...",
+  "copies": 1
+}
+
+
+Odgovor:
+{ "ok": true, "jobId": "..." }
+
+Šta dobijaš:
+
+Operater više ne razmišlja A4/A5.
+Nema browser “pamćenja” prethodne veličine.
+Ponašanje slično Crystal Reports.
+Šta treba uraditi tehnički:
+
+Napraviti lokalni .NET print agent (sluša samo 127.0.0.1).
+Dodati backend endpoint koji generiše PDF računa i kartice.
+U frontendu zameniti window.print() poziv za račun/karticu pozivom agentu.
+U agentu mapirati:
+račun/storno -> A5
+kartica -> A4
+Bezbednost:
+
+Agent da prihvata samo localhost pozive.
+Dodati jednostavan shared token između web app i agenta.
+Ograničiti štampanje samo na whitelist printera.
+Ako želiš, sledeći korak je da ti odmah napravim MVP:
+
+print-agent (.NET 8 minimal API),
+endpoint POST /print,
+frontend helper sendToLocalPrinter(...),
+povezivanje za račun (A5) i karticu (A4)

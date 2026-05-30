@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
+import { flushSync } from "react-dom";
 import { Printer, X, ZoomIn, ZoomOut } from "lucide-react";
 
 const PRIMARY = "#0F766E";
@@ -12,6 +13,8 @@ export interface PrintJob {
   component: React.ReactNode;
   orientation?: "portrait" | "landscape";
   defaultFormat?: "A4" | "A5";
+  lockFormat?: boolean;
+  lockOrientation?: boolean;
 }
 
 interface Props {
@@ -26,42 +29,118 @@ export function PrintModal({ job, onClose }: Props) {
   const [format, setFormat] = useState<"A4" | "A5">(job.defaultFormat ?? "A4");
   const [scale, setScale] = useState(0.62);
 
-  const paperW =
-    orientation === "portrait"
-      ? (format === "A4" ? 210 : 148) * MM_TO_PX
-      : (format === "A4" ? 297 : 210) * MM_TO_PX;
+  useEffect(() => {
+    setOrientation(job.orientation ?? "portrait");
+    setFormat(job.defaultFormat ?? "A4");
+  }, [job.title, job.orientation, job.defaultFormat]);
 
-  const paperH =
-    orientation === "portrait"
-      ? (format === "A4" ? 297 : 210) * MM_TO_PX
-      : (format === "A4" ? 210 : 148) * MM_TO_PX;
+  const effectiveOrientation = job.lockOrientation
+    ? (job.orientation ?? "portrait")
+    : orientation;
+  const effectiveFormat = job.lockFormat ? (job.defaultFormat ?? "A4") : format;
+
+  const pageWidthMm =
+    effectiveOrientation === "portrait"
+      ? effectiveFormat === "A4"
+        ? 210
+        : 148
+      : effectiveFormat === "A4"
+        ? 297
+        : 210;
+
+  const pageHeightMm =
+    effectiveOrientation === "portrait"
+      ? effectiveFormat === "A4"
+        ? 297
+        : 210
+      : effectiveFormat === "A4"
+        ? 210
+        : 148;
+
+  const paperW = pageWidthMm * MM_TO_PX;
+
+  const paperH = pageHeightMm * MM_TO_PX;
 
   const handlePrint = () => {
-    document.getElementById("__print_page_style__")?.remove();
-    document.getElementById("__print_content__")?.remove();
+    document.getElementById("__print_iframe__")?.remove();
 
-    const printDiv = document.createElement("div");
-    printDiv.id = "__print_content__";
-    document.body.appendChild(printDiv);
+    const iframe = document.createElement("iframe");
+    iframe.id = "__print_iframe__";
+    iframe.style.position = "fixed";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.visibility = "hidden";
+    document.body.appendChild(iframe);
 
-    const printRoot = createRoot(printDiv);
-    printRoot.render(job.component);
+    const frameWindow = iframe.contentWindow;
+    const frameDocument = iframe.contentDocument;
 
-    const style = document.createElement("style");
-    style.id = "__print_page_style__";
-    style.textContent =
-      `@media print { @page { size: ${format} ${orientation}; margin: 12mm; } body > *:not(#__print_content__) { display: none !important; } #__print_content__ { display: block !important; } }`;
-    document.head.appendChild(style);
+    if (!frameWindow || !frameDocument) {
+      iframe.remove();
+      return;
+    }
+
+    frameDocument.open();
+    frameDocument.write(
+      `<!doctype html><html><head><meta charset="utf-8"></head><body><div id="__print_content__"></div></body></html>`,
+    );
+    frameDocument.close();
+
+    const mountNode = frameDocument.getElementById("__print_content__");
+    if (!mountNode) {
+      iframe.remove();
+      return;
+    }
+
+    const printRoot = createRoot(mountNode);
+    flushSync(() => {
+      printRoot.render(job.component);
+    });
+
+    const style = frameDocument.createElement("style");
+    style.textContent = `@media print {
+  @page { size: ${pageWidthMm}mm ${pageHeightMm}mm; margin: 0; }
+  html, body {
+    width: ${pageWidthMm}mm !important;
+    height: ${pageHeightMm}mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: white !important;
+  }
+  #__print_content__ {
+    display: block !important;
+    width: ${pageWidthMm}mm !important;
+    min-height: ${pageHeightMm}mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    background: white !important;
+  }
+}`;
+    frameDocument.head.appendChild(style);
 
     const cleanup = () => {
       printRoot.unmount();
-      printDiv.remove();
-      document.getElementById("__print_page_style__")?.remove();
-      window.removeEventListener("afterprint", cleanup);
+      iframe.remove();
+      frameWindow.removeEventListener("afterprint", cleanup);
     };
-    window.addEventListener("afterprint", cleanup);
+    frameWindow.addEventListener("afterprint", cleanup);
 
-    setTimeout(() => window.print(), 50);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          frameWindow.focus();
+          frameWindow.print();
+          // Fallback cleanup for drivers that do not dispatch afterprint reliably.
+          setTimeout(cleanup, 1500);
+        }, 80);
+      });
+    });
   };
 
   return ReactDOM.createPortal(
@@ -82,14 +161,16 @@ export function PrintModal({ job, onClose }: Props) {
             <Printer size={17} />
             <span className="font-semibold text-sm">{job.title}</span>
           </div>
-          <button onClick={onClose} className="text-white/60 hover:text-white transition-colors">
+          <button
+            onClick={onClose}
+            className="text-white/60 hover:text-white transition-colors"
+          >
             <X size={19} />
           </button>
         </div>
 
         {/* Body */}
         <div className="flex flex-1 overflow-hidden">
-
           {/* Preview */}
           <div className="flex-1 bg-gray-200 dark:bg-[#0a1e1c] overflow-auto p-8 flex justify-center items-start">
             <div
@@ -118,26 +199,35 @@ export function PrintModal({ job, onClose }: Props) {
 
           {/* Controls */}
           <div className="w-52 border-l border-gray-100 dark:border-[#1a3d38] flex flex-col p-5 gap-5 flex-shrink-0">
-
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-[#4a7a74] mb-2.5">
                 Zoom preview
               </p>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setScale((s) => Math.max(0.3, +(s - 0.1).toFixed(2)))}
+                  onClick={() =>
+                    setScale((s) => Math.max(0.3, +(s - 0.1).toFixed(2)))
+                  }
                   className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-[#1e4a44] hover:bg-gray-100 dark:hover:bg-[#1a3d38] transition-all"
                 >
-                  <ZoomOut size={14} className="text-gray-500 dark:text-[#4a7a74]" />
+                  <ZoomOut
+                    size={14}
+                    className="text-gray-500 dark:text-[#4a7a74]"
+                  />
                 </button>
                 <span className="flex-1 text-center text-sm font-semibold text-gray-700 dark:text-[#c5e0db]">
                   {Math.round(scale * 100)}%
                 </span>
                 <button
-                  onClick={() => setScale((s) => Math.min(1.2, +(s + 0.1).toFixed(2)))}
+                  onClick={() =>
+                    setScale((s) => Math.min(1.2, +(s + 0.1).toFixed(2)))
+                  }
                   className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-[#1e4a44] hover:bg-gray-100 dark:hover:bg-[#1a3d38] transition-all"
                 >
-                  <ZoomIn size={14} className="text-gray-500 dark:text-[#4a7a74]" />
+                  <ZoomIn
+                    size={14}
+                    className="text-gray-500 dark:text-[#4a7a74]"
+                  />
                 </button>
               </div>
             </div>
@@ -157,6 +247,7 @@ export function PrintModal({ job, onClose }: Props) {
                     value={o}
                     checked={orientation === o}
                     onChange={() => setOrientation(o)}
+                    disabled={job.lockOrientation}
                     className="accent-teal-600"
                   />
                   {o === "portrait" ? "Portrait" : "Landscape"}
@@ -179,6 +270,7 @@ export function PrintModal({ job, onClose }: Props) {
                     value={f}
                     checked={format === f}
                     onChange={() => setFormat(f)}
+                    disabled={job.lockFormat}
                     className="accent-teal-600"
                   />
                   {f}
