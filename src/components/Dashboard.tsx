@@ -55,7 +55,11 @@ type MenuSection =
   | "kartica-partnera"
   | null;
 
-export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) {
+export function Dashboard({
+  username,
+  vrstaRadnika,
+  onLogout,
+}: DashboardProps) {
   const { theme, toggleTheme } = useTheme();
   const [activeSection, setActiveSection] = useState<MenuSection>(null);
   const [openMenu, setOpenMenu] = useState<MenuKey | null>(null);
@@ -63,7 +67,11 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
   const [hoveredBtn, setHoveredBtn] = useState<MenuKey | null>(null);
   const [notifKey, setNotifKey] = useState(0);
   const [notifMsg, setNotifMsg] = useState<string | null>(null);
+  const [printServiceStatus, setPrintServiceStatus] = useState<
+    "checking" | "online" | "offline"
+  >("checking");
   const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const printStatusRef = useRef<"checking" | "online" | "offline">("checking");
 
   const fileBtnRef = useRef<HTMLButtonElement>(null);
   const racunBtnRef = useRef<HTMLButtonElement>(null);
@@ -80,10 +88,16 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const t = e.target as Node;
-      const inFile = fileBtnRef.current?.contains(t) || fileDropRef.current?.contains(t);
-      const inRacun = racunBtnRef.current?.contains(t) || racunDropRef.current?.contains(t);
-      const inBlagajna = blagajnaBtnRef.current?.contains(t) || blagajnaDropRef.current?.contains(t);
-      const inKartica = karticaBtnRef.current?.contains(t) || karticaDropRef.current?.contains(t);
+      const inFile =
+        fileBtnRef.current?.contains(t) || fileDropRef.current?.contains(t);
+      const inRacun =
+        racunBtnRef.current?.contains(t) || racunDropRef.current?.contains(t);
+      const inBlagajna =
+        blagajnaBtnRef.current?.contains(t) ||
+        blagajnaDropRef.current?.contains(t);
+      const inKartica =
+        karticaBtnRef.current?.contains(t) ||
+        karticaDropRef.current?.contains(t);
       if (!inFile && !inRacun && !inBlagajna && !inKartica) setOpenMenu(null);
     };
     document.addEventListener("mousedown", handler);
@@ -120,12 +134,100 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
   const handleRacunKreiran = () => showNotif("USPJEŠNO UNESENO");
 
   const handleUplataSuccess = (iznos: number, partner: string) =>
-    showNotif(`${iznos.toLocaleString("bs-BA", { minimumFractionDigits: 2 })} KM · ${partner}`);
+    showNotif(
+      `${iznos.toLocaleString("bs-BA", { minimumFractionDigits: 2 })} KM · ${partner}`,
+    );
 
   const handleIsplataSuccess = (iznos: number, opis: string) =>
-    showNotif(`${iznos.toLocaleString("bs-BA", { minimumFractionDigits: 2 })} KM · ${opis}`);
+    showNotif(
+      `${iznos.toLocaleString("bs-BA", { minimumFractionDigits: 2 })} KM · ${opis}`,
+    );
 
-  const navBtnStyle = (menu: MenuKey, isActive: boolean): React.CSSProperties => ({
+  useEffect(() => {
+    let mounted = true;
+    const healthUrl = "http://127.0.0.1:4567/health";
+
+    const setServiceStatus = (nextStatus: "online" | "offline") => {
+      setPrintServiceStatus(nextStatus);
+
+      if (
+        printStatusRef.current !== "checking" &&
+        printStatusRef.current !== nextStatus
+      ) {
+        showNotif(
+          nextStatus === "online"
+            ? "Print servis je ponovo dostupan"
+            : "Print servis nije dostupan",
+        );
+      }
+
+      printStatusRef.current = nextStatus;
+    };
+
+    const pingNoCors = async () => {
+      const fallbackController = new AbortController();
+      const fallbackTimeoutId = setTimeout(
+        () => fallbackController.abort(),
+        2500,
+      );
+
+      try {
+        await fetch(healthUrl, {
+          method: "GET",
+          mode: "no-cors",
+          cache: "no-store",
+          signal: fallbackController.signal,
+        });
+        return true;
+      } catch {
+        return false;
+      } finally {
+        clearTimeout(fallbackTimeoutId);
+      }
+    };
+
+    const checkPrintService = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+      try {
+        const response = await fetch(healthUrl, {
+          method: "GET",
+          signal: controller.signal,
+          cache: "no-store",
+        });
+
+        let isOnline = response.ok;
+        if (!isOnline) {
+          isOnline = await pingNoCors();
+        }
+
+        if (!mounted) return;
+
+        setServiceStatus(isOnline ? "online" : "offline");
+      } catch {
+        const isOnline = await pingNoCors();
+        if (!mounted) return;
+
+        setServiceStatus(isOnline ? "online" : "offline");
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    checkPrintService();
+    const intervalId = setInterval(checkPrintService, 10000);
+
+    return () => {
+      mounted = false;
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  const navBtnStyle = (
+    menu: MenuKey,
+    isActive: boolean,
+  ): React.CSSProperties => ({
     background: isActive || hoveredBtn === menu ? ACCENT : PRIMARY,
     borderColor: ACCENT,
     color: "#fff",
@@ -141,7 +243,8 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
         : "text-gray-700 dark:text-[#a8d5cf] hover:bg-teal-50 dark:hover:bg-[#1a3d38]"
     }`;
 
-  const dropBg = "bg-white dark:bg-[#0f2320] border-gray-100 dark:border-[#1a3d38]";
+  const dropBg =
+    "bg-white dark:bg-[#0f2320] border-gray-100 dark:border-[#1a3d38]";
   const dropStripeBg = "bg-[#f0faf9] dark:bg-[#0d2b27]";
 
   const racunActive = !!(
@@ -160,8 +263,7 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
   );
 
   const karticaActive = !!(
-    openMenu === "kartica" ||
-    activeSection === "kartica-partnera"
+    openMenu === "kartica" || activeSection === "kartica-partnera"
   );
 
   return (
@@ -178,9 +280,14 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
               src="/foto/karpas_logo_software.png"
               alt="Karpas logo"
               className="h-10 w-10 object-contain rounded-lg bg-white/40 p-1"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
             />
-            <p className="text-lg font-bold leading-tight tracking-wide" style={{ color: ACCENT }}>
+            <p
+              className="text-lg font-bold leading-tight tracking-wide"
+              style={{ color: ACCENT }}
+            >
               Prodaja
             </p>
           </button>
@@ -193,19 +300,50 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
             <p className="text-[10px] text-white/50 uppercase tracking-widest font-medium">
               Karpas Ambalaže
             </p>
-            <p className="text-sm font-bold uppercase tracking-wide" style={{ color: ACCENT }}>
+            <p
+              className="text-sm font-bold uppercase tracking-wide"
+              style={{ color: ACCENT }}
+            >
               Prodaja
             </p>
           </button>
 
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2">
-              <p className="text-xs text-white/50 font-medium uppercase tracking-wider">
-                {roleLabel}:
-              </p>
-              <p className="text-sm font-semibold uppercase" style={{ color: ACCENT }}>
-                {username}
-              </p>
+              <div className="flex flex-col leading-tight">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-white/50 font-medium uppercase tracking-wider">
+                    {roleLabel}:
+                  </p>
+                  <p
+                    className="text-sm font-semibold uppercase"
+                    style={{ color: ACCENT }}
+                  >
+                    {username}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span
+                    className="inline-block w-2 h-2 rounded-full"
+                    style={{
+                      background:
+                        printServiceStatus === "online"
+                          ? "#22c55e"
+                          : printServiceStatus === "offline"
+                            ? "#ef4444"
+                            : "#f59e0b",
+                    }}
+                  />
+                  <p className="text-[10px] uppercase tracking-wide text-white/70 font-medium">
+                    Print servis:{" "}
+                    {printServiceStatus === "online"
+                      ? "online"
+                      : printServiceStatus === "offline"
+                        ? "offline"
+                        : "provjera"}
+                  </p>
+                </div>
+              </div>
             </div>
             <button
               onClick={onLogout}
@@ -232,14 +370,16 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
       {/* Navigation */}
       <nav className="bg-white dark:bg-[#0d2b27] shadow-sm border-b border-gray-100 dark:border-[#1a3d38]">
         <div className="mx-[5px] px-[5px] flex gap-2 py-3 items-center justify-center relative">
-
           {/* FILE */}
           <div>
             <button
               ref={fileBtnRef}
               onClick={() => toggleMenu("file")}
               className={navBtnBase}
-              style={navBtnStyle("file", !!(openMenu === "file" || activeSection === "file-opcije"))}
+              style={navBtnStyle(
+                "file",
+                !!(openMenu === "file" || activeSection === "file-opcije"),
+              )}
               onMouseEnter={() => setHoveredBtn("file")}
               onMouseLeave={() => setHoveredBtn(null)}
             >
@@ -260,7 +400,12 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
               ReactDOM.createPortal(
                 <div
                   ref={fileDropRef}
-                  style={{ position: "fixed", top: dropPos.top, left: dropPos.left, zIndex: 9999 }}
+                  style={{
+                    position: "fixed",
+                    top: dropPos.top,
+                    left: dropPos.left,
+                    zIndex: 9999,
+                  }}
                   className={`w-52 rounded-2xl border ${dropBg} shadow-2xl overflow-hidden`}
                 >
                   <div
@@ -273,18 +418,35 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
                   <div className="p-2 space-y-0.5">
                     <button
                       onClick={() => handleSectionChange("file-opcije")}
-                      className={dropdownItemClass(activeSection === "file-opcije")}
-                      style={activeSection === "file-opcije" ? { background: PRIMARY } : {}}
+                      className={dropdownItemClass(
+                        activeSection === "file-opcije",
+                      )}
+                      style={
+                        activeSection === "file-opcije"
+                          ? { background: PRIMARY }
+                          : {}
+                      }
                     >
                       <span
                         className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
-                          activeSection === "file-opcije" ? "" : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
+                          activeSection === "file-opcije"
+                            ? ""
+                            : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
                         }`}
-                        style={activeSection === "file-opcije" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                        style={
+                          activeSection === "file-opcije"
+                            ? { background: "rgba(255,255,255,0.2)" }
+                            : {}
+                        }
                       >
                         <Settings
                           size={13}
-                          style={{ color: activeSection === "file-opcije" ? "#fff" : PRIMARY }}
+                          style={{
+                            color:
+                              activeSection === "file-opcije"
+                                ? "#fff"
+                                : PRIMARY,
+                          }}
                         />
                       </span>
                       Opcije
@@ -322,7 +484,12 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
               ReactDOM.createPortal(
                 <div
                   ref={racunDropRef}
-                  style={{ position: "fixed", top: dropPos.top, left: dropPos.left, zIndex: 9999 }}
+                  style={{
+                    position: "fixed",
+                    top: dropPos.top,
+                    left: dropPos.left,
+                    zIndex: 9999,
+                  }}
                   className={`w-52 rounded-2xl border ${dropBg} shadow-2xl overflow-hidden`}
                 >
                   <div
@@ -335,18 +502,33 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
                   <div className="p-2 space-y-0.5">
                     <button
                       onClick={() => handleSectionChange("racun-unos")}
-                      className={dropdownItemClass(activeSection === "racun-unos")}
-                      style={activeSection === "racun-unos" ? { background: PRIMARY } : {}}
+                      className={dropdownItemClass(
+                        activeSection === "racun-unos",
+                      )}
+                      style={
+                        activeSection === "racun-unos"
+                          ? { background: PRIMARY }
+                          : {}
+                      }
                     >
                       <span
                         className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
-                          activeSection === "racun-unos" ? "" : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
+                          activeSection === "racun-unos"
+                            ? ""
+                            : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
                         }`}
-                        style={activeSection === "racun-unos" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                        style={
+                          activeSection === "racun-unos"
+                            ? { background: "rgba(255,255,255,0.2)" }
+                            : {}
+                        }
                       >
                         <PenLine
                           size={13}
-                          style={{ color: activeSection === "racun-unos" ? "#fff" : PRIMARY }}
+                          style={{
+                            color:
+                              activeSection === "racun-unos" ? "#fff" : PRIMARY,
+                          }}
                         />
                       </span>
                       Unos računa
@@ -354,18 +536,35 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
 
                     <button
                       onClick={() => handleSectionChange("racun-storno")}
-                      className={dropdownItemClass(activeSection === "racun-storno")}
-                      style={activeSection === "racun-storno" ? { background: PRIMARY } : {}}
+                      className={dropdownItemClass(
+                        activeSection === "racun-storno",
+                      )}
+                      style={
+                        activeSection === "racun-storno"
+                          ? { background: PRIMARY }
+                          : {}
+                      }
                     >
                       <span
                         className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
-                          activeSection === "racun-storno" ? "" : "bg-[#fff7ed] dark:bg-[#2a1a08]"
+                          activeSection === "racun-storno"
+                            ? ""
+                            : "bg-[#fff7ed] dark:bg-[#2a1a08]"
                         }`}
-                        style={activeSection === "racun-storno" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                        style={
+                          activeSection === "racun-storno"
+                            ? { background: "rgba(255,255,255,0.2)" }
+                            : {}
+                        }
                       >
                         <RotateCcw
                           size={13}
-                          style={{ color: activeSection === "racun-storno" ? "#fff" : ACCENT }}
+                          style={{
+                            color:
+                              activeSection === "racun-storno"
+                                ? "#fff"
+                                : ACCENT,
+                          }}
                         />
                       </span>
                       Storniranje računa
@@ -373,18 +572,35 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
 
                     <button
                       onClick={() => handleSectionChange("racun-pregled")}
-                      className={dropdownItemClass(activeSection === "racun-pregled")}
-                      style={activeSection === "racun-pregled" ? { background: PRIMARY } : {}}
+                      className={dropdownItemClass(
+                        activeSection === "racun-pregled",
+                      )}
+                      style={
+                        activeSection === "racun-pregled"
+                          ? { background: PRIMARY }
+                          : {}
+                      }
                     >
                       <span
                         className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
-                          activeSection === "racun-pregled" ? "" : "bg-[#fff7ed] dark:bg-[#2a1a08]"
+                          activeSection === "racun-pregled"
+                            ? ""
+                            : "bg-[#fff7ed] dark:bg-[#2a1a08]"
                         }`}
-                        style={activeSection === "racun-pregled" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                        style={
+                          activeSection === "racun-pregled"
+                            ? { background: "rgba(255,255,255,0.2)" }
+                            : {}
+                        }
                       >
                         <TrendingUp
                           size={13}
-                          style={{ color: activeSection === "racun-pregled" ? "#fff" : ACCENT }}
+                          style={{
+                            color:
+                              activeSection === "racun-pregled"
+                                ? "#fff"
+                                : ACCENT,
+                          }}
                         />
                       </span>
                       Pregled računa
@@ -422,7 +638,12 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
               ReactDOM.createPortal(
                 <div
                   ref={blagajnaDropRef}
-                  style={{ position: "fixed", top: dropPos.top, left: dropPos.left, zIndex: 9999 }}
+                  style={{
+                    position: "fixed",
+                    top: dropPos.top,
+                    left: dropPos.left,
+                    zIndex: 9999,
+                  }}
                   className={`w-52 rounded-2xl border ${dropBg} shadow-2xl overflow-hidden`}
                 >
                   <div
@@ -435,18 +656,35 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
                   <div className="p-2 space-y-0.5">
                     <button
                       onClick={() => handleSectionChange("blagajna-stanje")}
-                      className={dropdownItemClass(activeSection === "blagajna-stanje")}
-                      style={activeSection === "blagajna-stanje" ? { background: PRIMARY } : {}}
+                      className={dropdownItemClass(
+                        activeSection === "blagajna-stanje",
+                      )}
+                      style={
+                        activeSection === "blagajna-stanje"
+                          ? { background: PRIMARY }
+                          : {}
+                      }
                     >
                       <span
                         className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
-                          activeSection === "blagajna-stanje" ? "" : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
+                          activeSection === "blagajna-stanje"
+                            ? ""
+                            : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
                         }`}
-                        style={activeSection === "blagajna-stanje" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                        style={
+                          activeSection === "blagajna-stanje"
+                            ? { background: "rgba(255,255,255,0.2)" }
+                            : {}
+                        }
                       >
                         <Landmark
                           size={13}
-                          style={{ color: activeSection === "blagajna-stanje" ? "#fff" : PRIMARY }}
+                          style={{
+                            color:
+                              activeSection === "blagajna-stanje"
+                                ? "#fff"
+                                : PRIMARY,
+                          }}
                         />
                       </span>
                       Stanje blagajne
@@ -456,18 +694,35 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
 
                     <button
                       onClick={() => handleSectionChange("blagajna-uplate")}
-                      className={dropdownItemClass(activeSection === "blagajna-uplate")}
-                      style={activeSection === "blagajna-uplate" ? { background: PRIMARY } : {}}
+                      className={dropdownItemClass(
+                        activeSection === "blagajna-uplate",
+                      )}
+                      style={
+                        activeSection === "blagajna-uplate"
+                          ? { background: PRIMARY }
+                          : {}
+                      }
                     >
                       <span
                         className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
-                          activeSection === "blagajna-uplate" ? "" : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
+                          activeSection === "blagajna-uplate"
+                            ? ""
+                            : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
                         }`}
-                        style={activeSection === "blagajna-uplate" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                        style={
+                          activeSection === "blagajna-uplate"
+                            ? { background: "rgba(255,255,255,0.2)" }
+                            : {}
+                        }
                       >
                         <ArrowDownCircle
                           size={13}
-                          style={{ color: activeSection === "blagajna-uplate" ? "#fff" : PRIMARY }}
+                          style={{
+                            color:
+                              activeSection === "blagajna-uplate"
+                                ? "#fff"
+                                : PRIMARY,
+                          }}
                         />
                       </span>
                       Uplate
@@ -475,18 +730,35 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
 
                     <button
                       onClick={() => handleSectionChange("blagajna-isplate")}
-                      className={dropdownItemClass(activeSection === "blagajna-isplate")}
-                      style={activeSection === "blagajna-isplate" ? { background: PRIMARY } : {}}
+                      className={dropdownItemClass(
+                        activeSection === "blagajna-isplate",
+                      )}
+                      style={
+                        activeSection === "blagajna-isplate"
+                          ? { background: PRIMARY }
+                          : {}
+                      }
                     >
                       <span
                         className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
-                          activeSection === "blagajna-isplate" ? "" : "bg-[#fff7ed] dark:bg-[#2a1a08]"
+                          activeSection === "blagajna-isplate"
+                            ? ""
+                            : "bg-[#fff7ed] dark:bg-[#2a1a08]"
                         }`}
-                        style={activeSection === "blagajna-isplate" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                        style={
+                          activeSection === "blagajna-isplate"
+                            ? { background: "rgba(255,255,255,0.2)" }
+                            : {}
+                        }
                       >
                         <ArrowUpCircle
                           size={13}
-                          style={{ color: activeSection === "blagajna-isplate" ? "#fff" : ACCENT }}
+                          style={{
+                            color:
+                              activeSection === "blagajna-isplate"
+                                ? "#fff"
+                                : ACCENT,
+                          }}
                         />
                       </span>
                       Isplate
@@ -495,38 +767,76 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
                     <div className="h-px bg-gray-100 dark:bg-[#1a3d38] my-1" />
 
                     <button
-                      onClick={() => handleSectionChange("blagajna-pregled-uplata")}
-                      className={dropdownItemClass(activeSection === "blagajna-pregled-uplata")}
-                      style={activeSection === "blagajna-pregled-uplata" ? { background: PRIMARY } : {}}
+                      onClick={() =>
+                        handleSectionChange("blagajna-pregled-uplata")
+                      }
+                      className={dropdownItemClass(
+                        activeSection === "blagajna-pregled-uplata",
+                      )}
+                      style={
+                        activeSection === "blagajna-pregled-uplata"
+                          ? { background: PRIMARY }
+                          : {}
+                      }
                     >
                       <span
                         className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
-                          activeSection === "blagajna-pregled-uplata" ? "" : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
+                          activeSection === "blagajna-pregled-uplata"
+                            ? ""
+                            : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
                         }`}
-                        style={activeSection === "blagajna-pregled-uplata" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                        style={
+                          activeSection === "blagajna-pregled-uplata"
+                            ? { background: "rgba(255,255,255,0.2)" }
+                            : {}
+                        }
                       >
                         <ClipboardList
                           size={13}
-                          style={{ color: activeSection === "blagajna-pregled-uplata" ? "#fff" : PRIMARY }}
+                          style={{
+                            color:
+                              activeSection === "blagajna-pregled-uplata"
+                                ? "#fff"
+                                : PRIMARY,
+                          }}
                         />
                       </span>
                       Pregled uplata
                     </button>
 
                     <button
-                      onClick={() => handleSectionChange("blagajna-pregled-isplata")}
-                      className={dropdownItemClass(activeSection === "blagajna-pregled-isplata")}
-                      style={activeSection === "blagajna-pregled-isplata" ? { background: PRIMARY } : {}}
+                      onClick={() =>
+                        handleSectionChange("blagajna-pregled-isplata")
+                      }
+                      className={dropdownItemClass(
+                        activeSection === "blagajna-pregled-isplata",
+                      )}
+                      style={
+                        activeSection === "blagajna-pregled-isplata"
+                          ? { background: PRIMARY }
+                          : {}
+                      }
                     >
                       <span
                         className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
-                          activeSection === "blagajna-pregled-isplata" ? "" : "bg-[#fff7ed] dark:bg-[#2a1a08]"
+                          activeSection === "blagajna-pregled-isplata"
+                            ? ""
+                            : "bg-[#fff7ed] dark:bg-[#2a1a08]"
                         }`}
-                        style={activeSection === "blagajna-pregled-isplata" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                        style={
+                          activeSection === "blagajna-pregled-isplata"
+                            ? { background: "rgba(255,255,255,0.2)" }
+                            : {}
+                        }
                       >
                         <ClipboardList
                           size={13}
-                          style={{ color: activeSection === "blagajna-pregled-isplata" ? "#fff" : ACCENT }}
+                          style={{
+                            color:
+                              activeSection === "blagajna-pregled-isplata"
+                                ? "#fff"
+                                : ACCENT,
+                          }}
                         />
                       </span>
                       Pregled isplata
@@ -564,7 +874,12 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
               ReactDOM.createPortal(
                 <div
                   ref={karticaDropRef}
-                  style={{ position: "fixed", top: dropPos.top, left: dropPos.left, zIndex: 9999 }}
+                  style={{
+                    position: "fixed",
+                    top: dropPos.top,
+                    left: dropPos.left,
+                    zIndex: 9999,
+                  }}
                   className={`w-52 rounded-2xl border ${dropBg} shadow-2xl overflow-hidden`}
                 >
                   <div
@@ -577,18 +892,35 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
                   <div className="p-2 space-y-0.5">
                     <button
                       onClick={() => handleSectionChange("kartica-partnera")}
-                      className={dropdownItemClass(activeSection === "kartica-partnera")}
-                      style={activeSection === "kartica-partnera" ? { background: PRIMARY } : {}}
+                      className={dropdownItemClass(
+                        activeSection === "kartica-partnera",
+                      )}
+                      style={
+                        activeSection === "kartica-partnera"
+                          ? { background: PRIMARY }
+                          : {}
+                      }
                     >
                       <span
                         className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
-                          activeSection === "kartica-partnera" ? "" : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
+                          activeSection === "kartica-partnera"
+                            ? ""
+                            : "bg-[#e6f7f5] dark:bg-[#0d2b27]"
                         }`}
-                        style={activeSection === "kartica-partnera" ? { background: "rgba(255,255,255,0.2)" } : {}}
+                        style={
+                          activeSection === "kartica-partnera"
+                            ? { background: "rgba(255,255,255,0.2)" }
+                            : {}
+                        }
                       >
                         <Users
                           size={13}
-                          style={{ color: activeSection === "kartica-partnera" ? "#fff" : PRIMARY }}
+                          style={{
+                            color:
+                              activeSection === "kartica-partnera"
+                                ? "#fff"
+                                : PRIMARY,
+                          }}
                         />
                       </span>
                       Kartica partnera
@@ -612,7 +944,13 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <circle cx="8" cy="8" r="8" fill="rgba(255,255,255,0.2)" />
-                <path d="M4.5 8L7 10.5L11.5 5.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path
+                  d="M4.5 8L7 10.5L11.5 5.5"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
               <span className="truncate">{notifMsg}</span>
             </div>
@@ -622,20 +960,25 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
 
       {/* Content */}
       <main className="mx-[5px] px-[5px] py-[5px]">
-
         {activeSection === "file-opcije" && (
           <div className="bg-white dark:bg-[#0f2320] rounded-2xl shadow-sm border border-gray-100 dark:border-[#1a3d38] p-8">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#e6f7f5] dark:bg-[#0d2b27]">
                 <Settings size={20} style={{ color: PRIMARY }} />
               </div>
-              <h2 className="text-xl font-bold text-gray-800 dark:text-[#e6f4f2]">Opcije</h2>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-[#e6f4f2]">
+                Opcije
+              </h2>
             </div>
-            <p className="text-gray-500 dark:text-[#4a7a74]">Podešavanja modula File.</p>
+            <p className="text-gray-500 dark:text-[#4a7a74]">
+              Podešavanja modula File.
+            </p>
           </div>
         )}
 
-        {activeSection === "racun-unos" && <RacunUnos onUspjeh={handleRacunKreiran} />}
+        {activeSection === "racun-unos" && (
+          <RacunUnos onUspjeh={handleRacunKreiran} />
+        )}
 
         {activeSection === "racun-storno" && <RacunStorno />}
 
@@ -643,13 +986,21 @@ export function Dashboard({ username, vrstaRadnika, onLogout }: DashboardProps) 
 
         {activeSection === "blagajna-stanje" && <BlagajnaStanje />}
 
-        {activeSection === "blagajna-uplate" && <BlagajnaUplate onUplataSuccess={handleUplataSuccess} />}
+        {activeSection === "blagajna-uplate" && (
+          <BlagajnaUplate onUplataSuccess={handleUplataSuccess} />
+        )}
 
-        {activeSection === "blagajna-isplate" && <BlagajnaIsplate onIsplataSuccess={handleIsplataSuccess} />}
+        {activeSection === "blagajna-isplate" && (
+          <BlagajnaIsplate onIsplataSuccess={handleIsplataSuccess} />
+        )}
 
-        {activeSection === "blagajna-pregled-uplata" && <BlagajnaPregledUplata />}
+        {activeSection === "blagajna-pregled-uplata" && (
+          <BlagajnaPregledUplata />
+        )}
 
-        {activeSection === "blagajna-pregled-isplata" && <BlagajnaPregledIsplata />}
+        {activeSection === "blagajna-pregled-isplata" && (
+          <BlagajnaPregledIsplata />
+        )}
 
         {activeSection === "kartica-partnera" && <KarticaPartnera />}
       </main>
