@@ -8,8 +8,16 @@ import { BlagajnaPregledUplata } from "./BlagajnaPregledUplata";
 import { BlagajnaPregledIsplata } from "./BlagajnaPregledIsplata";
 import { BlagajnaStanje } from "./BlagajnaStanje";
 import { KarticaPartnera } from "./KarticaPartnera";
+import { PrintModal, type PrintJob } from "./print/PrintModal";
+import { IzvjestajTemplate } from "./print/templates/IzvjestajTemplate";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../context/ThemeContext";
+import {
+  bytesToBase64,
+  getAvailablePrinters,
+  mapPrintError,
+  sendPrintJob,
+} from "../utils/printService";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -55,6 +63,19 @@ type MenuSection =
   | "kartica-partnera"
   | null;
 
+type NotifyTone = "success" | "error";
+
+interface NotifyOptions {
+  tone?: NotifyTone;
+  durationMs?: number;
+}
+
+interface NotifyPayload {
+  message: string;
+  tone?: NotifyTone;
+  durationMs?: number;
+}
+
 export function Dashboard({
   username,
   vrstaRadnika,
@@ -67,9 +88,15 @@ export function Dashboard({
   const [hoveredBtn, setHoveredBtn] = useState<MenuKey | null>(null);
   const [notifKey, setNotifKey] = useState(0);
   const [notifMsg, setNotifMsg] = useState<string | null>(null);
+  const [notifTone, setNotifTone] = useState<NotifyTone>("success");
+  const [notifDurationMs, setNotifDurationMs] = useState(5000);
   const [printServiceStatus, setPrintServiceStatus] = useState<
     "checking" | "online" | "offline"
   >("checking");
+  const [printJob, setPrintJob] = useState<PrintJob | null>(null);
+  const [printers, setPrinters] = useState<string[]>([]);
+  const [selectedPrinter, setSelectedPrinter] = useState("");
+  const [loadingPrinters, setLoadingPrinters] = useState(false);
   const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const printStatusRef = useRef<"checking" | "online" | "offline">("checking");
 
@@ -84,6 +111,7 @@ export function Dashboard({
 
   const isAdministrator = vrstaRadnika === 1;
   const roleLabel = isAdministrator ? "Administrator" : "Korisnik";
+  const printerStorageKey = `printService.printer.${username}`;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -124,12 +152,46 @@ export function Dashboard({
     setOpenMenu(null);
   };
 
-  const showNotif = (msg: string) => {
+  const showNotif = (msg: string, options?: NotifyOptions) => {
+    const tone = options?.tone ?? "success";
+    const durationMs = options?.durationMs ?? 5000;
+
     if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
     setNotifMsg(msg);
+    setNotifTone(tone);
+    setNotifDurationMs(durationMs);
     setNotifKey((k) => k + 1);
-    notifTimerRef.current = setTimeout(() => setNotifMsg(null), 5000);
+    notifTimerRef.current = setTimeout(() => setNotifMsg(null), durationMs);
   };
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<string | NotifyPayload>;
+      const detail = customEvent.detail;
+
+      if (typeof detail === "string" && detail.trim()) {
+        showNotif(detail);
+        return;
+      }
+
+      if (
+        detail &&
+        typeof detail === "object" &&
+        typeof detail.message === "string" &&
+        detail.message.trim()
+      ) {
+        showNotif(detail.message, {
+          tone: detail.tone,
+          durationMs: detail.durationMs,
+        });
+      }
+    };
+
+    window.addEventListener("app-notify", handler as EventListener);
+    return () => {
+      window.removeEventListener("app-notify", handler as EventListener);
+    };
+  }, []);
 
   const handleRacunKreiran = () => showNotif("USPJEŠNO UNESENO");
 
@@ -142,6 +204,95 @@ export function Dashboard({
     showNotif(
       `${iznos.toLocaleString("bs-BA", { minimumFractionDigits: 2 })} KM · ${opis}`,
     );
+
+  const handleStampajIzvjestaj = () => {
+    setOpenMenu(null);
+    setPrintJob({
+      title: `Izvještaj — ${username}`,
+      defaultFormat: "A4",
+      orientation: "portrait",
+      allowBrowserPrintFallback: true,
+      component: (
+        <IzvjestajTemplate
+          username={username}
+          roleLabel={roleLabel}
+          printServiceStatus={printServiceStatus}
+          generatedAt={new Date().toISOString()}
+        />
+      ),
+      onPrint: async ({ format, orientation }) => {
+        if (!selectedPrinter.trim()) {
+          showNotif("Odaberi printer u Opcije prije štampe.");
+          return;
+        }
+
+        try {
+          const response = await fetch("/PRIMJER_IZVJESTAJA.pdf", {
+            method: "GET",
+            cache: "no-store",
+          });
+
+          if (!response.ok) {
+            showNotif("Uzorak izvještaja nije pronađen.");
+            return;
+          }
+
+          const buffer = await response.arrayBuffer();
+          const documentBase64 = bytesToBase64(new Uint8Array(buffer));
+
+          await sendPrintJob({
+            appId: "prodaja-web",
+            mode: "pdf",
+            paperSize: format,
+            orientation,
+            printerName: selectedPrinter.trim(),
+            copies: 1,
+            documentType: "racun",
+            documentBase64,
+          });
+
+          showNotif("Dokument je poslan na štampu.");
+          setPrintJob(null);
+        } catch (error) {
+          const code =
+            typeof error === "object" && error !== null && "code" in error
+              ? String((error as { code: unknown }).code)
+              : undefined;
+          showNotif(mapPrintError(code));
+        }
+      },
+    });
+  };
+
+  const loadPrinters = async () => {
+    setLoadingPrinters(true);
+    try {
+      const list = await getAvailablePrinters();
+      setPrinters(list);
+    } catch {
+      setPrinters([]);
+    } finally {
+      setLoadingPrinters(false);
+    }
+  };
+
+  const savePrinter = () => {
+    const printer = selectedPrinter.trim();
+    if (!printer) {
+      showNotif("Unesi ili izaberi printer.");
+      return;
+    }
+
+    localStorage.setItem(printerStorageKey, printer);
+    showNotif(`Sačuvan printer: ${printer}`);
+  };
+
+  useEffect(() => {
+    if (!username) return;
+    const saved = localStorage.getItem(printerStorageKey);
+    if (saved) setSelectedPrinter(saved);
+    void loadPrinters();
+  }, [username]);
 
   useEffect(() => {
     let mounted = true;
@@ -450,6 +601,16 @@ export function Dashboard({
                         />
                       </span>
                       Opcije
+                    </button>
+
+                    <button
+                      onClick={handleStampajIzvjestaj}
+                      className={dropdownItemClass(false)}
+                    >
+                      <span className="flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 bg-[#e6f7f5] dark:bg-[#0d2b27]">
+                        <ClipboardList size={13} style={{ color: PRIMARY }} />
+                      </span>
+                      Štampaj izvještaj
                     </button>
                   </div>
                 </div>,
@@ -937,20 +1098,32 @@ export function Dashboard({
               key={notifKey}
               className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-lg"
               style={{
-                background: PRIMARY,
-                animation: "fadeInOut 5s ease forwards",
+                background: notifTone === "error" ? "#DC2626" : PRIMARY,
+                animation: `fadeInOut ${Math.max(1, notifDurationMs / 1000)}s ease forwards`,
                 maxWidth: 360,
               }}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <circle cx="8" cy="8" r="8" fill="rgba(255,255,255,0.2)" />
-                <path
-                  d="M4.5 8L7 10.5L11.5 5.5"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                {notifTone === "error" ? (
+                  <path
+                    d="M8 4.25V8.75"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                ) : (
+                  <path
+                    d="M4.5 8L7 10.5L11.5 5.5"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+                {notifTone === "error" && (
+                  <circle cx="8" cy="11.5" r="1" fill="white" />
+                )}
               </svg>
               <span className="truncate">{notifMsg}</span>
             </div>
@@ -970,9 +1143,59 @@ export function Dashboard({
                 Opcije
               </h2>
             </div>
-            <p className="text-gray-500 dark:text-[#4a7a74]">
-              Podešavanja modula File.
-            </p>
+
+            <div className="max-w-xl rounded-2xl border border-gray-200 dark:border-[#1a3d38] p-4 bg-[#f9fffe] dark:bg-[#0d2b27]">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-[#4a7a74] mb-2">
+                Print servis
+              </p>
+
+              <label className="block text-sm font-semibold text-gray-700 dark:text-[#c5e0db] mb-1">
+                Printer
+              </label>
+
+              <div className="flex gap-2">
+                <select
+                  value={selectedPrinter}
+                  onChange={(e) => setSelectedPrinter(e.target.value)}
+                  className="flex-1 px-3 py-2.5 text-sm border border-gray-200 dark:border-[#1e4a44] rounded-xl focus:outline-none bg-white dark:bg-[#0a1e1c] text-gray-800 dark:text-[#e6f4f2]"
+                >
+                  <option value="">-- Izaberi printer --</option>
+                  {printers.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => void loadPrinters()}
+                  className="px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 dark:border-[#1e4a44] text-gray-600 dark:text-[#a8d5cf] hover:bg-white dark:hover:bg-[#12332f] transition-colors"
+                >
+                  {loadingPrinters ? "..." : "Osvježi"}
+                </button>
+              </div>
+
+              <input
+                type="text"
+                value={selectedPrinter}
+                onChange={(e) => setSelectedPrinter(e.target.value)}
+                placeholder="Naziv printera (ručni unos)"
+                className="mt-2 w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-[#1e4a44] rounded-xl focus:outline-none bg-white dark:bg-[#0a1e1c] text-gray-800 dark:text-[#e6f4f2]"
+              />
+
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  onClick={savePrinter}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-110"
+                  style={{ background: PRIMARY }}
+                >
+                  Sačuvaj printer
+                </button>
+                <span className="text-xs text-gray-500 dark:text-[#4a7a74]">
+                  Čuva se za korisnika: {username}
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1004,6 +1227,14 @@ export function Dashboard({
 
         {activeSection === "kartica-partnera" && <KarticaPartnera />}
       </main>
+
+      {printJob && (
+        <PrintModal
+          job={printJob}
+          onClose={() => setPrintJob(null)}
+          onNotify={showNotif}
+        />
+      )}
     </div>
   );
 }

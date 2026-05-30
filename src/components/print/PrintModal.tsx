@@ -1,8 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { Printer, X, ZoomIn, ZoomOut } from "lucide-react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
+import {
+  bytesToBase64,
+  getPrintServiceStatus,
+  mapPrintError,
+  sendPrintJob,
+  type PrintServiceStatus,
+} from "../../utils/printService";
 
 const PRIMARY = "#0F766E";
 
@@ -15,24 +24,80 @@ export interface PrintJob {
   defaultFormat?: "A4" | "A5";
   lockFormat?: boolean;
   lockOrientation?: boolean;
+  allowBrowserPrintFallback?: boolean;
+  onPrint?: (options: {
+    format: "A4" | "A5";
+    orientation: "portrait" | "landscape";
+  }) => Promise<void> | void;
 }
 
 interface Props {
   job: PrintJob;
   onClose: () => void;
+  onNotify?: (
+    message: string,
+    options?: { tone?: "success" | "error"; durationMs?: number },
+  ) => void;
 }
 
-export function PrintModal({ job, onClose }: Props) {
+export function PrintModal({ job, onClose, onNotify }: Props) {
   const [orientation, setOrientation] = useState<"portrait" | "landscape">(
     job.orientation ?? "portrait",
   );
   const [format, setFormat] = useState<"A4" | "A5">(job.defaultFormat ?? "A4");
   const [scale, setScale] = useState(0.62);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [printError, setPrintError] = useState<string | null>(null);
+  const [serviceStatus, setServiceStatus] = useState<PrintServiceStatus | null>(
+    null,
+  );
+  const directPrintRef = useRef<HTMLDivElement | null>(null);
+
+  const loadServiceStatus = async (): Promise<PrintServiceStatus | null> => {
+    setStatusLoading(true);
+    setStatusError(null);
+
+    try {
+      const status = await getPrintServiceStatus();
+      setServiceStatus(status);
+      return status;
+    } catch {
+      setStatusError("/status nije dostupan");
+      return null;
+    } finally {
+      setStatusLoading(false);
+    }
+  };
 
   useEffect(() => {
     setOrientation(job.orientation ?? "portrait");
     setFormat(job.defaultFormat ?? "A4");
   }, [job.title, job.orientation, job.defaultFormat]);
+
+  useEffect(() => {
+    void loadServiceStatus();
+  }, [job.title]);
+
+  const notify = (
+    message: string,
+    options?: { tone?: "success" | "error"; durationMs?: number },
+  ) => {
+    if (onNotify) {
+      onNotify(message, options);
+      return;
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("app-notify", {
+        detail: {
+          message,
+          tone: options?.tone,
+          durationMs: options?.durationMs,
+        },
+      }),
+    );
+  };
 
   const effectiveOrientation = job.lockOrientation
     ? (job.orientation ?? "portrait")
@@ -61,7 +126,88 @@ export function PrintModal({ job, onClose }: Props) {
 
   const paperH = pageHeightMm * MM_TO_PX;
 
-  const handlePrint = () => {
+  const statusBadgeClass = (value: boolean) =>
+    value
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : "bg-rose-50 text-rose-700 border-rose-200";
+
+  const statusLabel = (value: boolean) => (value ? "DA" : "NE");
+
+  const isServiceReadyForDirectPrint = (status: PrintServiceStatus | null) =>
+    !!status && status.serviceActive && status.pdfRendererActive;
+
+  const resolvePrinterName = (status: PrintServiceStatus | null) => {
+    if (!status) return "";
+    if (status.defaultPrinter.trim()) return status.defaultPrinter.trim();
+    if (status.printers.length > 0) return status.printers[0];
+    return "";
+  };
+
+  const resolveDocumentType = () => {
+    const title = job.title.toLowerCase();
+    if (title.includes("storno")) return "storno";
+    if (title.includes("kartica")) return "kartica";
+    if (title.includes("izvještaj") || title.includes("izvjestaj")) {
+      return "izvjestaj";
+    }
+    return "racun";
+  };
+
+  const sendDirectPrintFromPreview = async (status: PrintServiceStatus) => {
+    const printSource = directPrintRef.current;
+    if (!printSource) {
+      throw { code: "INVALID_REQUEST", message: "Nema izvora za štampu" };
+    }
+
+    const printerName = resolvePrinterName(status);
+    if (!printerName) {
+      throw { code: "PRINTER_NOT_FOUND", message: "Printer nije pronađen" };
+    }
+
+    const canvas = await html2canvas(printSource, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      windowWidth: Math.ceil(paperW),
+      windowHeight: Math.ceil(paperH),
+    });
+
+    const pdf = new jsPDF({
+      orientation: effectiveOrientation,
+      unit: "mm",
+      format: effectiveFormat,
+      compress: true,
+    });
+
+    pdf.addImage(
+      canvas.toDataURL("image/png"),
+      "PNG",
+      0,
+      0,
+      pageWidthMm,
+      pageHeightMm,
+      undefined,
+      "FAST",
+    );
+
+    const documentBase64 = bytesToBase64(
+      new Uint8Array(pdf.output("arraybuffer")),
+    );
+
+    return sendPrintJob({
+      appId: "prodaja-web",
+      mode: "pdf",
+      paperSize: effectiveFormat,
+      orientation: effectiveOrientation,
+      printerName,
+      copies: 1,
+      documentType: resolveDocumentType(),
+      documentBase64,
+    });
+  };
+
+  const runBrowserPrint = () => {
     document.getElementById("__print_iframe__")?.remove();
 
     const iframe = document.createElement("iframe");
@@ -102,7 +248,7 @@ export function PrintModal({ job, onClose }: Props) {
 
     const style = frameDocument.createElement("style");
     style.textContent = `@media print {
-  @page { size: ${pageWidthMm}mm ${pageHeightMm}mm; margin: 0; }
+  @page { size: ${effectiveFormat} ${effectiveOrientation}; margin: 0; }
   html, body {
     width: ${pageWidthMm}mm !important;
     height: ${pageHeightMm}mm !important;
@@ -134,13 +280,74 @@ export function PrintModal({ job, onClose }: Props) {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setTimeout(() => {
-          frameWindow.focus();
-          frameWindow.print();
-          // Fallback cleanup for drivers that do not dispatch afterprint reliably.
+          try {
+            frameWindow.focus();
+            frameWindow.print();
+          } catch {
+            // Some browser extensions can throw while opening print dialog.
+          }
           setTimeout(cleanup, 1500);
         }, 80);
       });
     });
+  };
+
+  const handlePrint = async () => {
+    setPrintError(null);
+
+    let latestStatus = serviceStatus;
+
+    if (!latestStatus || statusLoading) {
+      latestStatus = await loadServiceStatus();
+    }
+
+    const canUseDirectPrint = isServiceReadyForDirectPrint(latestStatus);
+
+    if (!canUseDirectPrint) {
+      if (job.allowBrowserPrintFallback === true) {
+        runBrowserPrint();
+      }
+      return;
+    }
+
+    if (job.onPrint) {
+      try {
+        await job.onPrint({
+          format: effectiveFormat,
+          orientation: effectiveOrientation,
+        });
+        notify("Stampa uspjesna");
+        onClose();
+        return;
+      } catch (error) {
+        const code =
+          typeof error === "object" && error !== null && "code" in error
+            ? String((error as { code: unknown }).code)
+            : undefined;
+        const message = mapPrintError(code);
+        setPrintError(message);
+        notify(message, { tone: "error", durationMs: 9000 });
+        return;
+      }
+    }
+
+    if (!latestStatus) {
+      return;
+    }
+
+    try {
+      await sendDirectPrintFromPreview(latestStatus);
+      notify("Stampa uspjesna");
+      onClose();
+    } catch (error) {
+      const code =
+        typeof error === "object" && error !== null && "code" in error
+          ? String((error as { code: unknown }).code)
+          : undefined;
+      const message = mapPrintError(code);
+      setPrintError(message);
+      notify(message, { tone: "error", durationMs: 9000 });
+    }
   };
 
   return ReactDOM.createPortal(
@@ -279,13 +486,109 @@ export function PrintModal({ job, onClose }: Props) {
             </div>
 
             <div className="mt-auto space-y-2">
+              <div className="rounded-xl border border-gray-200 dark:border-[#1e4a44] p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-[#4a7a74]">
+                    Status servisa
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void loadServiceStatus();
+                    }}
+                    className="text-[10px] px-2 py-1 rounded-md border border-gray-200 dark:border-[#1e4a44] text-gray-600 dark:text-[#9fc7c1] hover:bg-gray-50 dark:hover:bg-[#1a3d38]"
+                  >
+                    Osvježi
+                  </button>
+                </div>
+
+                {statusLoading && (
+                  <p className="text-xs text-gray-500 dark:text-[#7aa59f]">
+                    Provjeravam /status...
+                  </p>
+                )}
+
+                {!statusLoading && statusError && (
+                  <p className="text-xs text-rose-600">{statusError}</p>
+                )}
+
+                {!statusLoading && !statusError && printError && (
+                  <p className="text-xs text-rose-600">{printError}</p>
+                )}
+
+                {!statusLoading && !statusError && serviceStatus && (
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-600 dark:text-[#9fc7c1]">
+                        Servis aktivan
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full border ${statusBadgeClass(serviceStatus.serviceActive)}`}
+                      >
+                        {statusLabel(serviceStatus.serviceActive)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-600 dark:text-[#9fc7c1]">
+                        PDF renderer aktivan
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full border ${statusBadgeClass(serviceStatus.pdfRendererActive)}`}
+                      >
+                        {statusLabel(serviceStatus.pdfRendererActive)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-600 dark:text-[#9fc7c1]">
+                        SumatraPDF postoji
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full border ${statusBadgeClass(serviceStatus.sumatraExists)}`}
+                      >
+                        {statusLabel(serviceStatus.sumatraExists)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-600 dark:text-[#9fc7c1]">
+                        Default printer postoji
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full border ${statusBadgeClass(serviceStatus.hasDefaultPrinter)}`}
+                      >
+                        {statusLabel(serviceStatus.hasDefaultPrinter)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-600 dark:text-[#9fc7c1]">
+                        Broj printera
+                      </span>
+                      <span className="font-semibold text-gray-800 dark:text-[#d7eeea]">
+                        {serviceStatus.printerCount}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-600 dark:text-[#9fc7c1]">
+                        Vrijeme provjere
+                      </span>
+                      <span className="font-semibold text-gray-800 dark:text-[#d7eeea] text-right">
+                        {new Date(serviceStatus.checkedAt).toLocaleString(
+                          "sr-Latn-RS",
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
-                onClick={handlePrint}
+                onClick={() => {
+                  void handlePrint().catch(() => undefined);
+                }}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-110"
                 style={{ background: PRIMARY }}
               >
                 <Printer size={15} />
-                Štampaj / PDF
+                Pošalji na štampu
               </button>
               <button
                 onClick={onClose}
@@ -295,9 +598,38 @@ export function PrintModal({ job, onClose }: Props) {
               </button>
             </div>
 
-            <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] text-center leading-relaxed">
-              Za export u PDF izaberi "Spremi kao PDF" u sistemskom dijalogu
-            </p>
+            {job.allowBrowserPrintFallback === true && (
+              <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] text-center leading-relaxed">
+                Za export u PDF izaberi "Spremi kao PDF" u sistemskom dijalogu
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            position: "fixed",
+            left: -10000,
+            top: 0,
+            width: paperW,
+            height: paperH,
+            opacity: 0,
+            pointerEvents: "none",
+            overflow: "hidden",
+            background: "white",
+            zIndex: -1,
+          }}
+        >
+          <div
+            ref={directPrintRef}
+            style={{
+              width: paperW,
+              height: paperH,
+              overflow: "hidden",
+              background: "white",
+            }}
+          >
+            {job.component}
           </div>
         </div>
       </div>
