@@ -22,9 +22,23 @@ const th = (extra?: React.CSSProperties): React.CSSProperties => ({
   ...extra,
 });
 
-export function IzvjestajTemplate({ username, generatedAt }: Props) {
+export function IzvjestajTemplate({ generatedAt }: Props) {
   const datum = new Date(generatedAt).toLocaleDateString("bs-BA");
-  const novcanice = ["200", "100", "50", "20", "10", "5", "2", "1", "0.5", "0.2", "0.1", "0.05", "€"];
+  const novcanice = [
+    "200",
+    "100",
+    "50",
+    "20",
+    "10",
+    "5",
+    "2",
+    "1",
+    "0.5",
+    "0.2",
+    "0.1",
+    "0.05",
+    "€",
+  ];
 
   return (
     <div
@@ -55,7 +69,11 @@ export function IzvjestajTemplate({ username, generatedAt }: Props) {
 
       {/* DATUM / TEREN / RADNIK */}
       <table
-        style={{ width: "100%", borderCollapse: "collapse", marginBottom: "4px" }}
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginBottom: "4px",
+        }}
       >
         <tbody>
           <tr>
@@ -71,7 +89,11 @@ export function IzvjestajTemplate({ username, generatedAt }: Props) {
 
       {/* Glavna tabela računa */}
       <table
-        style={{ width: "100%", borderCollapse: "collapse", marginBottom: "4px" }}
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginBottom: "4px",
+        }}
       >
         <thead>
           <tr>
@@ -85,7 +107,9 @@ export function IzvjestajTemplate({ username, generatedAt }: Props) {
         <tbody>
           {Array.from({ length: 12 }, (_, i) => (
             <tr key={i}>
-              <td style={cell({ height: "14px", textAlign: "center" })}>{i === 0 ? "1" : ""}</td>
+              <td style={cell({ height: "14px", textAlign: "center" })}>
+                {i === 0 ? "1" : ""}
+              </td>
               <td style={cell()}>&nbsp;</td>
               <td style={cell()}>&nbsp;</td>
               <td style={cell()}>&nbsp;</td>
@@ -97,7 +121,11 @@ export function IzvjestajTemplate({ username, generatedAt }: Props) {
 
       {/* Rekapitulacija */}
       <table
-        style={{ width: "50%", borderCollapse: "collapse", marginBottom: "4px" }}
+        style={{
+          width: "50%",
+          borderCollapse: "collapse",
+          marginBottom: "4px",
+        }}
       >
         <tbody>
           <tr>
@@ -121,19 +149,31 @@ export function IzvjestajTemplate({ username, generatedAt }: Props) {
 
       {/* Red novčanica */}
       <table
-        style={{ width: "100%", borderCollapse: "collapse", marginBottom: "10px" }}
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginBottom: "10px",
+        }}
       >
         <tbody>
           <tr>
             {novcanice.map((v) => (
-              <td key={v} style={cell({ textAlign: "center", fontWeight: v === "€" ? "bold" : "normal" })}>
+              <td
+                key={v}
+                style={cell({
+                  textAlign: "center",
+                  fontWeight: v === "€" ? "bold" : "normal",
+                })}
+              >
                 {v}
               </td>
             ))}
           </tr>
           <tr>
             {novcanice.map((v) => (
-              <td key={v} style={cell({ height: "18px" })}>&nbsp;</td>
+              <td key={v} style={cell({ height: "18px" })}>
+                &nbsp;
+              </td>
             ))}
           </tr>
         </tbody>
@@ -143,9 +183,7 @@ export function IzvjestajTemplate({ username, generatedAt }: Props) {
       <div style={{ fontWeight: "bold", marginBottom: "3px", fontSize: "9px" }}>
         POVRAT ROBE
       </div>
-      <table
-        style={{ width: "100%", borderCollapse: "collapse" }}
-      >
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
             <th style={th({ width: "45px" })}>Br.ref.</th>
@@ -166,11 +204,45 @@ export function IzvjestajTemplate({ username, generatedAt }: Props) {
                   padding: "2px 5px",
                   height: "16px",
                 }}
-              >&nbsp;</td>
-              <td style={{ borderBottom: border, borderRight: border, padding: "2px 5px" }}>&nbsp;</td>
-              <td style={{ borderBottom: border, borderRight: border, padding: "2px 5px" }}>&nbsp;</td>
-              <td style={{ borderBottom: border, borderRight: border, padding: "2px 5px" }}>&nbsp;</td>
-              <td style={{ borderBottom: border, borderRight: border, padding: "2px 5px" }}>&nbsp;</td>
+              >
+                &nbsp;
+              </td>
+              <td
+                style={{
+                  borderBottom: border,
+                  borderRight: border,
+                  padding: "2px 5px",
+                }}
+              >
+                &nbsp;
+              </td>
+              <td
+                style={{
+                  borderBottom: border,
+                  borderRight: border,
+                  padding: "2px 5px",
+                }}
+              >
+                &nbsp;
+              </td>
+              <td
+                style={{
+                  borderBottom: border,
+                  borderRight: border,
+                  padding: "2px 5px",
+                }}
+              >
+                &nbsp;
+              </td>
+              <td
+                style={{
+                  borderBottom: border,
+                  borderRight: border,
+                  padding: "2px 5px",
+                }}
+              >
+                &nbsp;
+              </td>
             </tr>
           ))}
         </tbody>

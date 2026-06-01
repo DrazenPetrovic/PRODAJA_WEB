@@ -15,6 +15,7 @@ import { useTheme } from "../context/ThemeContext";
 import {
   bytesToBase64,
   getAvailablePrinters,
+  getPrintServiceBaseUrl,
   mapPrintError,
   sendPrintJob,
 } from "../utils/printService";
@@ -296,7 +297,7 @@ export function Dashboard({
 
   useEffect(() => {
     let mounted = true;
-    const healthUrl = "http://127.0.0.1:4567/health";
+    const healthUrl = `${getPrintServiceBaseUrl()}/health`;
 
     const setServiceStatus = (nextStatus: "online" | "offline") => {
       setPrintServiceStatus(nextStatus);
@@ -315,28 +316,6 @@ export function Dashboard({
       printStatusRef.current = nextStatus;
     };
 
-    const pingNoCors = async () => {
-      const fallbackController = new AbortController();
-      const fallbackTimeoutId = setTimeout(
-        () => fallbackController.abort(),
-        2500,
-      );
-
-      try {
-        await fetch(healthUrl, {
-          method: "GET",
-          mode: "no-cors",
-          cache: "no-store",
-          signal: fallbackController.signal,
-        });
-        return true;
-      } catch {
-        return false;
-      } finally {
-        clearTimeout(fallbackTimeoutId);
-      }
-    };
-
     const checkPrintService = async () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2500);
@@ -348,19 +327,13 @@ export function Dashboard({
           cache: "no-store",
         });
 
-        let isOnline = response.ok;
-        if (!isOnline) {
-          isOnline = await pingNoCors();
-        }
-
         if (!mounted) return;
 
-        setServiceStatus(isOnline ? "online" : "offline");
+        setServiceStatus(response.ok ? "online" : "offline");
       } catch {
-        const isOnline = await pingNoCors();
         if (!mounted) return;
 
-        setServiceStatus(isOnline ? "online" : "offline");
+        setServiceStatus("offline");
       } finally {
         clearTimeout(timeoutId);
       }
