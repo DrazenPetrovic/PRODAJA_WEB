@@ -1,17 +1,5 @@
-function isLocalHost(hostname: string): boolean {
-  return (
-    hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
-  );
-}
-
 export function getPrintServiceBaseUrl(): string {
-  if (typeof window === "undefined") {
-    return "http://127.0.0.1:4567";
-  }
-
-  return isLocalHost(window.location.hostname)
-    ? "http://127.0.0.1:4567"
-    : "/api/print";
+  return "http://127.0.0.1:4567";
 }
 
 const PRINT_SERVICE_URL = getPrintServiceBaseUrl();

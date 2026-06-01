@@ -15,7 +15,6 @@ import { useTheme } from "../context/ThemeContext";
 import {
   bytesToBase64,
   getAvailablePrinters,
-  getPrintServiceBaseUrl,
   mapPrintError,
   sendPrintJob,
 } from "../utils/printService";
@@ -297,7 +296,7 @@ export function Dashboard({
 
   useEffect(() => {
     let mounted = true;
-    const healthUrl = `${getPrintServiceBaseUrl()}/health`;
+    const healthUrl = "http://127.0.0.1:4567/health";
 
     const setServiceStatus = (nextStatus: "online" | "offline") => {
       setPrintServiceStatus(nextStatus);
