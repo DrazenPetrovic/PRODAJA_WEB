@@ -210,6 +210,7 @@ export function Dashboard({
     setPrintJob({
       title: `Izvještaj — ${username}`,
       defaultFormat: "A4",
+      lockFormat: true,
       orientation: "portrait",
       allowBrowserPrintFallback: true,
       component: (
@@ -247,7 +248,7 @@ export function Dashboard({
             orientation,
             printerName: selectedPrinter.trim(),
             copies: 1,
-            documentType: "racun",
+            documentType: "izvjestaj",
             documentBase64,
           });
 

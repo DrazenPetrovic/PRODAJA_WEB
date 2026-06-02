@@ -17,6 +17,28 @@ const PRIMARY = "#0F766E";
 
 const MM_TO_PX = 3.7795;
 
+type DocumentType = "racun" | "storno" | "kartica" | "izvjestaj";
+
+function resolveDocumentTypeFromTitle(title: string): DocumentType {
+  const normalized = title.toLowerCase();
+  if (normalized.includes("storno")) return "storno";
+  if (normalized.includes("kartica")) return "kartica";
+  if (normalized.includes("izvještaj") || normalized.includes("izvjestaj")) {
+    return "izvjestaj";
+  }
+  if (normalized.includes("račun") || normalized.includes("racun")) {
+    return "racun";
+  }
+  return "izvjestaj";
+}
+
+function resolveFormatByDocumentType(documentType: DocumentType): "A4" | "A5" {
+  if (documentType === "racun" || documentType === "storno") {
+    return "A5";
+  }
+  return "A4";
+}
+
 export interface PrintJob {
   title: string;
   component: React.ReactNode;
@@ -41,10 +63,12 @@ interface Props {
 }
 
 export function PrintModal({ job, onClose, onNotify }: Props) {
+  const documentType = resolveDocumentTypeFromTitle(job.title);
+  const forcedFormat = resolveFormatByDocumentType(documentType);
+
   const [orientation, setOrientation] = useState<"portrait" | "landscape">(
     job.orientation ?? "portrait",
   );
-  const [format, setFormat] = useState<"A4" | "A5">(job.defaultFormat ?? "A4");
   const [scale, setScale] = useState(0.62);
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -72,8 +96,7 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
 
   useEffect(() => {
     setOrientation(job.orientation ?? "portrait");
-    setFormat(job.defaultFormat ?? "A4");
-  }, [job.title, job.orientation, job.defaultFormat]);
+  }, [job.title, job.orientation]);
 
   useEffect(() => {
     void loadServiceStatus();
@@ -102,7 +125,7 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
   const effectiveOrientation = job.lockOrientation
     ? (job.orientation ?? "portrait")
     : orientation;
-  const effectiveFormat = job.lockFormat ? (job.defaultFormat ?? "A4") : format;
+  const effectiveFormat = forcedFormat;
 
   const pageWidthMm =
     effectiveOrientation === "portrait"
@@ -141,16 +164,6 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
     if (status.defaultPrinter.trim()) return status.defaultPrinter.trim();
     if (status.printers.length > 0) return status.printers[0];
     return "";
-  };
-
-  const resolveDocumentType = () => {
-    const title = job.title.toLowerCase();
-    if (title.includes("storno")) return "storno";
-    if (title.includes("kartica")) return "kartica";
-    if (title.includes("izvještaj") || title.includes("izvjestaj")) {
-      return "izvjestaj";
-    }
-    return "racun";
   };
 
   const sendDirectPrintFromPreview = async (status: PrintServiceStatus) => {
@@ -202,7 +215,7 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
       orientation: effectiveOrientation,
       printerName,
       copies: 1,
-      documentType: resolveDocumentType(),
+      documentType,
       documentBase64,
     });
   };
@@ -475,9 +488,8 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
                     type="radio"
                     name="format"
                     value={f}
-                    checked={format === f}
-                    onChange={() => setFormat(f)}
-                    disabled={job.lockFormat}
+                    checked={effectiveFormat === f}
+                    disabled
                     className="accent-teal-600"
                   />
                   {f}
