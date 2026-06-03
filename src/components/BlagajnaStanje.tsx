@@ -174,6 +174,11 @@ export function BlagajnaStanje() {
       className="flex flex-col rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1a3d38] shadow-sm bg-white dark:bg-[#0f2320]"
       style={{ height: "calc(100vh - 150px)" }}
     >
+      {/* Naziv */}
+      <div className="flex-shrink-0 px-5 pt-4 pb-1">
+        <h1 className="text-xl font-bold text-gray-800 dark:text-[#e6f4f2]">Pregled blagajne</h1>
+      </div>
+
       {/* Header */}
       <div
         className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-[#1a3d38]"

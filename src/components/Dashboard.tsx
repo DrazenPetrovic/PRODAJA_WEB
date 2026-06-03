@@ -7,6 +7,7 @@ import { BlagajnaIsplate } from "./BlagajnaIsplate";
 import { BlagajnaPregledUplata } from "./BlagajnaPregledUplata";
 import { BlagajnaPregledIsplata } from "./BlagajnaPregledIsplata";
 import { BlagajnaStanje } from "./BlagajnaStanje";
+import { BlagajnaPregledBlagajni } from "./BlagajnaPregledBlagajni";
 import { KarticaPartnera } from "./KarticaPartnera";
 import { PrintModal, type PrintJob } from "./print/PrintModal";
 import { IzvjestajTemplate } from "./print/templates/IzvjestajTemplate";
@@ -60,6 +61,7 @@ type MenuSection =
   | "blagajna-isplate"
   | "blagajna-pregled-uplata"
   | "blagajna-pregled-isplata"
+  | "blagajna-pregled-blagajni"
   | "kartica-partnera"
   | null;
 
@@ -383,7 +385,8 @@ export function Dashboard({
     activeSection === "blagajna-uplate" ||
     activeSection === "blagajna-isplate" ||
     activeSection === "blagajna-pregled-uplata" ||
-    activeSection === "blagajna-pregled-isplata"
+    activeSection === "blagajna-pregled-isplata" ||
+    activeSection === "blagajna-pregled-blagajni"
   );
 
   const karticaActive = !!(
@@ -975,6 +978,44 @@ export function Dashboard({
                       </span>
                       Pregled isplata
                     </button>
+
+                    <button
+                      onClick={() =>
+                        handleSectionChange("blagajna-pregled-blagajni")
+                      }
+                      className={dropdownItemClass(
+                        activeSection === "blagajna-pregled-blagajni",
+                      )}
+                      style={
+                        activeSection === "blagajna-pregled-blagajni"
+                          ? { background: PRIMARY }
+                          : {}
+                      }
+                    >
+                      <span
+                        className={`flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 ${
+                          activeSection === "blagajna-pregled-blagajni"
+                            ? ""
+                            : "bg-[#f0fdf9] dark:bg-[#0a2b27]"
+                        }`}
+                        style={
+                          activeSection === "blagajna-pregled-blagajni"
+                            ? { background: "rgba(255,255,255,0.2)" }
+                            : {}
+                        }
+                      >
+                        <Landmark
+                          size={13}
+                          style={{
+                            color:
+                              activeSection === "blagajna-pregled-blagajni"
+                                ? "#fff"
+                                : PRIMARY,
+                          }}
+                        />
+                      </span>
+                      Pregled blagajni
+                    </button>
                   </div>
                 </div>,
                 document.body,
@@ -1196,6 +1237,10 @@ export function Dashboard({
 
         {activeSection === "blagajna-pregled-isplata" && (
           <BlagajnaPregledIsplata />
+        )}
+
+        {activeSection === "blagajna-pregled-blagajni" && (
+          <BlagajnaPregledBlagajni />
         )}
 
         {activeSection === "kartica-partnera" && <KarticaPartnera />}

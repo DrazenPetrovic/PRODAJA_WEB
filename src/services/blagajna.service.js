@@ -39,7 +39,7 @@ export const getRacuniPartnera = async (idPartnera) => {
   });
 };
 
-export const unosUplate = async ({ idPartnera, nacinPlacanja, datum, biljeska, idOperatera, stavke }) => {
+export const unosUplate = async ({ idPartnera, nacinPlacanja, datum, biljeska, idOperatera, stavke, idBlagajne }) => {
   return withConnection(async (connection) => {
     const datumDb = fmtDatumSaTrenutnimVremenom(datum);
 
@@ -48,9 +48,9 @@ export const unosUplate = async ({ idPartnera, nacinPlacanja, datum, biljeska, i
     if (isManualMode) {
       const [result] = await connection.execute(
         `INSERT INTO erp_prodaja.blagajna_uplate
-           (id_partnera, ukupan_iznos, nacin_placanja, datum, biljeska, id_operatera)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [idPartnera, stavke[0].iznos, nacinPlacanja, datumDb, biljeska || null, idOperatera]
+           (id_partnera, ukupan_iznos, nacin_placanja, datum, biljeska, id_operatera, id_blagajne)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [idPartnera, stavke[0].iznos, nacinPlacanja, datumDb, biljeska || null, idOperatera, idBlagajne || null]
       );
       return result.insertId;
     }
@@ -60,8 +60,8 @@ export const unosUplate = async ({ idPartnera, nacinPlacanja, datum, biljeska, i
     );
 
     const [rows] = await connection.execute(
-      "CALL erp_prodaja.sp_unos_uplate(?, ?, ?, ?, ?, ?)",
-      [idPartnera, nacinPlacanja, datumDb, biljeska || "", idOperatera, stavkeJson]
+      "CALL erp_prodaja.sp_unos_uplate(?, ?, ?, ?, ?, ?, ?)",
+      [idPartnera, nacinPlacanja, datumDb, biljeska || "", idOperatera, stavkeJson, idBlagajne || null]
     );
 
     const result = rows[0][0];
@@ -174,13 +174,13 @@ export const zatvoriBlagajnu = async ({ idOperatera, krajStvarno }) => {
   });
 };
 
-export const unosIsplate = async ({ vrsta, racunId, idPartnera, stranka, iznos, datum, biljeska, idOperatera }) => {
+export const unosIsplate = async ({ vrsta, racunId, idPartnera, stranka, iznos, datum, biljeska, idOperatera, idBlagajne }) => {
   return withConnection(async (connection) => {
     const datumDb = fmtDatumSaTrenutnimVremenom(datum);
 
     const [rows] = await connection.execute(
-      "CALL erp_prodaja.sp_unos_isplate(?, ?, ?, ?, ?, ?, ?, ?)",
-      [vrsta, racunId || null, idPartnera || null, stranka || null, iznos, datumDb, biljeska || null, idOperatera]
+      "CALL erp_prodaja.sp_unos_isplate(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [vrsta, racunId || null, idPartnera || null, stranka || null, iznos, datumDb, biljeska || null, idOperatera, idBlagajne || null]
     );
 
     const result = rows[0][0];
@@ -188,5 +188,26 @@ export const unosIsplate = async ({ vrsta, racunId, idPartnera, stranka, iznos, 
       throw new Error(result.poruka);
     }
     return result.rezultat;
+  });
+};
+
+export const getPregledBlagajniLista = async () => {
+  return withConnection(async (connection) => {
+    const [rows] = await connection.execute("CALL erp_prodaja.sp_pregled_blagajne_lista()");
+    return rows[0];
+  });
+};
+
+export const getPregledBlagajnaDetalj = async (idBlagajne) => {
+  return withConnection(async (connection) => {
+    const [rows] = await connection.execute(
+      "CALL erp_prodaja.sp_pregled_blagajna_detalj(?)",
+      [idBlagajne]
+    );
+    return {
+      blagajna: rows[0][0] ?? null,
+      uplate:   rows[1] ?? [],
+      isplate:  rows[2] ?? [],
+    };
   });
 };

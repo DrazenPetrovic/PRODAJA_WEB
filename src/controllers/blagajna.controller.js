@@ -36,7 +36,7 @@ export const getPregledIsplata = async (req, res) => {
 
 export const unosIsplate = async (req, res) => {
   try {
-    const { vrsta, racunId, idPartnera, stranka, iznos, datum, biljeska } = req.body;
+    const { vrsta, racunId, idPartnera, stranka, iznos, datum, biljeska, idBlagajne } = req.body;
     const idOperatera = req.user.sifraRadnika;
 
     if (!vrsta || !iznos || iznos <= 0) {
@@ -44,7 +44,7 @@ export const unosIsplate = async (req, res) => {
     }
 
     const isplataId = await BlagajnaService.unosIsplate({
-      vrsta, racunId, idPartnera, stranka, iznos, datum, biljeska, idOperatera,
+      vrsta, racunId, idPartnera, stranka, iznos, datum, biljeska, idOperatera, idBlagajne,
     });
 
     return res.json({ success: true, isplataId });
@@ -92,7 +92,7 @@ export const zatvoriBlagajnu = async (req, res) => {
 
 export const unosUplate = async (req, res) => {
   try {
-    const { idPartnera, nacinPlacanja, datum, biljeska, stavke } = req.body;
+    const { idPartnera, nacinPlacanja, datum, biljeska, stavke, idBlagajne } = req.body;
     const idOperatera = req.user.sifraRadnika;
 
     if (!idPartnera || !nacinPlacanja || !Array.isArray(stavke) || stavke.length === 0) {
@@ -100,17 +100,36 @@ export const unosUplate = async (req, res) => {
     }
 
     const uplataId = await BlagajnaService.unosUplate({
-      idPartnera,
-      nacinPlacanja,
-      datum,
-      biljeska,
-      idOperatera,
-      stavke,
+      idPartnera, nacinPlacanja, datum, biljeska, idOperatera, stavke, idBlagajne,
     });
 
     return res.json({ success: true, uplataId });
   } catch (error) {
     console.error("unosUplate error:", error);
     return res.status(500).json({ success: false, message: error.message || "Greška pri unosu uplate" });
+  }
+};
+
+export const getPregledBlagajniLista = async (req, res) => {
+  try {
+    const blagajne = await BlagajnaService.getPregledBlagajniLista();
+    return res.json({ success: true, blagajne });
+  } catch (error) {
+    console.error("getPregledBlagajniLista error:", error);
+    return res.status(500).json({ success: false, message: "Greška pri dohvatanju liste blagajni" });
+  }
+};
+
+export const getPregledBlagajnaDetalj = async (req, res) => {
+  try {
+    const idBlagajne = Number(req.params.idBlagajne);
+    if (!idBlagajne) {
+      return res.status(400).json({ success: false, message: "Nedostaje ID blagajne" });
+    }
+    const detalj = await BlagajnaService.getPregledBlagajnaDetalj(idBlagajne);
+    return res.json({ success: true, ...detalj });
+  } catch (error) {
+    console.error("getPregledBlagajnaDetalj error:", error);
+    return res.status(500).json({ success: false, message: "Greška pri dohvatanju detalja blagajne" });
   }
 };

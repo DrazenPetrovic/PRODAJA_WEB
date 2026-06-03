@@ -54,13 +54,17 @@ export function BlagajnaUplate({ onUplataSuccess }: BlagajnaUplateProps) {
   const [blagajnaOtvorena, setBlagajnaOtvorena] = useState<boolean | null>(
     null,
   );
+  const [blagajnaId, setBlagajnaId] = useState<number | null>(null);
 
   useEffect(() => {
     fetch(`${API_URL}/api/blagajna/stanje`, { credentials: "include" })
       .then((r) => r.json())
-      .then((d) =>
-        setBlagajnaOtvorena(d.success && d.stanje?.status === "otvorena"),
-      )
+      .then((d) => {
+        setBlagajnaOtvorena(d.success && d.stanje?.status === "otvorena");
+        if (d.success && d.stanje?.status === "otvorena") {
+          setBlagajnaId(d.stanje.id ?? null);
+        }
+      })
       .catch(() => setBlagajnaOtvorena(false));
   }, []);
 
@@ -235,6 +239,7 @@ export function BlagajnaUplate({ onUplataSuccess }: BlagajnaUplateProps) {
           })(),
           biljeska: biljeska.slice(0, 254),
           stavke,
+          idBlagajne: blagajnaId,
         }),
       });
       const data = await res.json();
