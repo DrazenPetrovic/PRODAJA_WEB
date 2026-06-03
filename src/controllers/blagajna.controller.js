@@ -1,4 +1,5 @@
 import * as BlagajnaService from "../services/blagajna.service.js";
+import * as RadniciService from "../services/radnici.service.js";
 
 export const getRacuniPartnera = async (req, res) => {
   try {
@@ -31,6 +32,16 @@ export const getPregledIsplata = async (req, res) => {
   } catch (error) {
     console.error("getPregledIsplata error:", error);
     return res.status(500).json({ success: false, message: "Greška pri dohvatanju isplata" });
+  }
+};
+
+export const getNalogodavci = async (req, res) => {
+  try {
+    const data = await RadniciService.getAktivniRadniciNalogodavci();
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error("getNalogodavci error:", error);
+    return res.status(500).json({ success: false, message: "Greška pri dohvatanju nalogodavaca" });
   }
 };
 

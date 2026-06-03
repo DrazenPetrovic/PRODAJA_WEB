@@ -10,6 +10,7 @@ router.post("/zatvori", verifyToken, BlagajnaController.zatvoriBlagajnu);
 router.get("/racuni-partnera/:idPartnera", verifyToken, BlagajnaController.getRacuniPartnera);
 router.get("/pregled-uplata", verifyToken, BlagajnaController.getPregledUplata);
 router.get("/pregled-isplata", verifyToken, BlagajnaController.getPregledIsplata);
+router.get("/nalogodavci", verifyToken, BlagajnaController.getNalogodavci);
 router.get("/pregled-blagajni", verifyToken, BlagajnaController.getPregledBlagajniLista);
 router.get("/pregled-blagajni/:idBlagajne", verifyToken, BlagajnaController.getPregledBlagajnaDetalj);
 router.post("/uplata", verifyToken, BlagajnaController.unosUplate);

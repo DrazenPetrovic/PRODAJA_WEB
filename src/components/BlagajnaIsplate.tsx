@@ -2,29 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowUpCircle,
-  Building2,
   CalendarDays,
   Loader2,
   Lock,
-  MapPin,
-  Receipt,
-  RefreshCw,
-  Search,
   User,
-  X,
 } from "lucide-react";
 
-const PRIMARY = "#0F766E";
 const ACCENT = "#F97316";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3009";
 
-type Vrsta = "refundacija" | "trosak" | "isplata";
+type Vrsta = "isplata";
 
-interface Partner {
-  sifra_partnera: string;
-  naziv_partnera: string;
-  adresa_partnera: string;
-  Naziv_grada: string;
+interface Nalogodavac {
+  id_eksterni: number;
+  naziv_radnika: string;
 }
 
 interface BlagajnaIsplateProps {
@@ -45,11 +36,7 @@ const todayStr = () => {
   return `${String(t.getDate()).padStart(2, "0")}.${String(t.getMonth() + 1).padStart(2, "0")}.${t.getFullYear()}`;
 };
 
-const VRSTE: { value: Vrsta; label: string; icon: React.ReactNode; desc: string }[] = [
-  { value: "refundacija", label: "Refundacija", icon: <RefreshCw size={14} />, desc: "Povrat novca kupcu" },
-  { value: "trosak",      label: "Trošak",      icon: <Receipt size={14} />,   desc: "Troškovi kompanije" },
-  { value: "isplata",     label: "Isplata",     icon: <ArrowUpCircle size={14} />, desc: "Ostale isplate" },
-];
+const VRSTA_ISPLATE: Vrsta = "isplata";
 
 export function BlagajnaIsplate({ onIsplataSuccess }: BlagajnaIsplateProps) {
   const [blagajnaOtvorena, setBlagajnaOtvorena] = useState<boolean | null>(null);
@@ -67,84 +54,57 @@ export function BlagajnaIsplate({ onIsplataSuccess }: BlagajnaIsplateProps) {
       .catch(() => setBlagajnaOtvorena(false));
   }, []);
 
-  const [vrsta, setVrsta] = useState<Vrsta>("trosak");
-  const [partneri, setPartneri] = useState<Partner[]>([]);
-  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
-  const [searchPartneri, setSearchPartneri] = useState("");
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [nalogodavci, setNalogodavci] = useState<Nalogodavac[]>([]);
+  const [idNalogodavca, setIdNalogodavca] = useState<string>("");
   const [stranka, setStranka] = useState("");
   const [iznos, setIznos] = useState("");
   const [datum, setDatum] = useState(todayStr);
   const [biljeska, setBiljeska] = useState("");
   const [slanje, setSlanje] = useState(false);
   const [greska, setGreska] = useState<string | null>(null);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationMessage, setValidationMessage] = useState("");
 
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const datePickerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/partneri`, { credentials: "include" })
+    fetch(`${API_URL}/api/blagajna/nalogodavci`, { credentials: "include" })
       .then((r) => r.json())
-      .then((data) => { if (data.success) setPartneri(data.data); })
+      .then((data) => { if (data.success) setNalogodavci(data.data); })
       .catch(() => {});
   }, []);
 
+  const missingRequiredFields = !idNalogodavca || !stranka.trim();
+
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node))
-        setDropdownOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const filteredPartneri = partneri.filter((p) =>
-    p.naziv_partnera.toLowerCase().includes(searchPartneri.toLowerCase())
-  );
-
-  const handleSelectPartner = (p: Partner) => {
-    setSelectedPartner(p);
-    setSearchPartneri(p.naziv_partnera);
-    setStranka(p.naziv_partnera);
-    setDropdownOpen(false);
-  };
-
-  const handleResetPartner = () => {
-    setSelectedPartner(null);
-    setSearchPartneri("");
-    setStranka("");
-  };
-
-  const handleVrstaChange = (v: Vrsta) => {
-    setVrsta(v);
-    if (v !== "refundacija") {
-      setSelectedPartner(null);
-      setSearchPartneri("");
+    if (!missingRequiredFields && showValidationModal) {
+      setShowValidationModal(false);
     }
-    setGreska(null);
-  };
+  }, [missingRequiredFields, showValidationModal]);
 
   const handleSnimi = async () => {
+    if (!idNalogodavca || !stranka.trim()) {
+      setValidationMessage("Popunite Nalogodavca i PRIMATELJA prije snimanja.");
+      setShowValidationModal(true);
+      return;
+    }
+
     const iznosNum = parseFloat(iznos) || 0;
     if (iznosNum <= 0) { setGreska("Iznos mora biti veći od nule"); return; }
-    if (vrsta !== "refundacija" && !stranka.trim()) { setGreska("Stranka je obavezna"); return; }
 
     setSlanje(true);
     setGreska(null);
     try {
-      const strankaZaSlanje =
-        vrsta === "refundacija"
-          ? (selectedPartner?.naziv_partnera ?? stranka.trim() ?? null)
-          : stranka.trim() || null;
+      const strankaZaSlanje = stranka.trim() || null;
 
       const res = await fetch(`${API_URL}/api/blagajna/isplata`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          vrsta,
+          vrsta: VRSTA_ISPLATE,
           racunId: null,
-          idPartnera: selectedPartner ? Number(selectedPartner.sifra_partnera) : null,
+          idPartnera: Number(idNalogodavca),
           stranka: strankaZaSlanje,
           iznos: iznosNum,
           datum: (() => {
@@ -158,13 +118,12 @@ export function BlagajnaIsplate({ onIsplataSuccess }: BlagajnaIsplateProps) {
       const data = await res.json();
       if (!data.success) { setGreska(data.message ?? "Greška pri unosu isplate"); return; }
 
-      const opisZaObavijest = strankaZaSlanje || vrsta;
+      const opisZaObavijest = strankaZaSlanje || VRSTA_ISPLATE;
       setIznos("");
       setBiljeska("");
       setDatum(todayStr());
       setStranka("");
-      setSelectedPartner(null);
-      setSearchPartneri("");
+      setIdNalogodavca("");
       onIsplataSuccess?.(iznosNum, opisZaObavijest);
     } catch {
       setGreska("Greška u komunikaciji sa serverom");
@@ -210,7 +169,7 @@ export function BlagajnaIsplate({ onIsplataSuccess }: BlagajnaIsplateProps) {
       {/* ── LEFT PANEL ── */}
       <div className="w-[35%] flex-shrink-0 flex flex-col overflow-hidden border-r-2 border-gray-200 dark:border-[#1e4a44]">
 
-        {/* Vrsta selector */}
+        {/* Nalogodavac */}
         <div
           className="flex-shrink-0 px-4 py-3 border-b border-gray-100 dark:border-[#1a3d38]"
           style={{ background: `${ACCENT}06` }}
@@ -219,139 +178,41 @@ export function BlagajnaIsplate({ onIsplataSuccess }: BlagajnaIsplateProps) {
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: ACCENT }}>
               <ArrowUpCircle size={13} className="text-white" />
             </div>
-            <span className="text-sm font-bold text-gray-700 dark:text-[#e6f4f2]">Vrsta isplate</span>
+            <span className="text-sm font-bold text-gray-700 dark:text-[#e6f4f2]">Nalogodavac</span>
           </div>
-          <div className="flex flex-col gap-1.5">
-            {VRSTE.map((v) => (
-              <button
-                key={v.value}
-                onClick={() => handleVrstaChange(v.value)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
-                  vrsta === v.value
-                    ? "text-white"
-                    : "text-gray-600 dark:text-[#a8d5cf] hover:bg-orange-50 dark:hover:bg-[#1a3d38]"
-                }`}
-                style={vrsta === v.value ? { background: ACCENT } : {}}
-              >
-                <span
-                  className="flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0"
-                  style={
-                    vrsta === v.value
-                      ? { background: "rgba(255,255,255,0.2)" }
-                      : { background: `${ACCENT}15` }
-                  }
-                >
-                  <span style={{ color: vrsta === v.value ? "#fff" : ACCENT }}>{v.icon}</span>
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold leading-none">{v.label}</p>
-                  <p
-                    className="text-[10px] mt-0.5 leading-none"
-                    style={{ color: vrsta === v.value ? "rgba(255,255,255,0.65)" : undefined }}
-                  >
-                    {vrsta !== v.value && (
-                      <span className="text-gray-400 dark:text-[#4a7a74]">{v.desc}</span>
-                    )}
-                    {vrsta === v.value && v.desc}
-                  </p>
-                </div>
-              </button>
+          <select
+            value={idNalogodavca}
+            onChange={(e) => setIdNalogodavca(e.target.value)}
+            className={inputCls}
+          >
+            <option value="">Odaberi nalogodavca...</option>
+            {nalogodavci.map((n) => (
+              <option key={n.id_eksterni} value={String(n.id_eksterni)}>
+                {n.naziv_radnika}
+              </option>
             ))}
-          </div>
+          </select>
         </div>
 
-        {/* Partner (refundacija) or Stranka (ostalo) */}
+        {/* Primatelj */}
         <div className="flex-1 flex flex-col overflow-hidden px-4 py-4">
-          {vrsta === "refundacija" ? (
-            <>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: `${PRIMARY}15` }}>
-                  <Building2 size={12} style={{ color: PRIMARY }} />
-                </div>
-                <span className="text-xs font-bold text-gray-600 dark:text-[#a8d5cf]">Partner (kupac)</span>
-              </div>
-              <div ref={dropdownRef} className="relative">
-                {selectedPartner ? (
-                  <div
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl border-2"
-                    style={{ borderColor: `${PRIMARY}40`, background: `${PRIMARY}08` }}
-                  >
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: PRIMARY }}
-                    >
-                      <Building2 size={14} className="text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold truncate" style={{ color: PRIMARY }}>
-                        {selectedPartner.naziv_partnera}
-                      </p>
-                      {selectedPartner.Naziv_grada && (
-                        <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] flex items-center gap-1">
-                          <MapPin size={9} />
-                          {selectedPartner.Naziv_grada}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={handleResetPartner}
-                      className="flex-shrink-0 p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-[#1a3d38] transition-all"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={searchPartneri}
-                      onChange={(e) => { setSearchPartneri(e.target.value); setDropdownOpen(true); }}
-                      onFocus={() => setDropdownOpen(true)}
-                      placeholder="Pretraži partnera..."
-                      className={inputCls + " pl-9"}
-                    />
-                    {dropdownOpen && filteredPartneri.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-[#0f2320] rounded-xl border border-gray-100 dark:border-[#1a3d38] shadow-xl overflow-hidden max-h-64 overflow-y-auto">
-                        {filteredPartneri.map((p) => (
-                          <button
-                            key={p.sifra_partnera}
-                            onClick={() => handleSelectPartner(p)}
-                            className="w-full text-left px-4 py-2.5 hover:bg-orange-50 dark:hover:bg-[#0d2b27] transition-colors border-b border-gray-50 dark:border-[#1a3d38] last:border-0"
-                          >
-                            <p className="text-sm font-semibold text-gray-700 dark:text-[#c5e0db]">{p.naziv_partnera}</p>
-                            {p.Naziv_grada && (
-                              <p className="text-[10px] text-gray-400 dark:text-[#4a7a74]">{p.Naziv_grada}</p>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: `${ACCENT}15` }}>
-                  <User size={12} style={{ color: ACCENT }} />
-                </div>
-                <span className="text-xs font-bold text-gray-600 dark:text-[#a8d5cf]">Stranka / primatelj</span>
-              </div>
-              <input
-                type="text"
-                value={stranka}
-                onChange={(e) => setStranka(e.target.value)}
-                placeholder={vrsta === "trosak" ? "Npr. Dobavljač, usluga..." : "Ime ili naziv primatelja..."}
-                maxLength={254}
-                className={inputCls}
-              />
-              <p className="text-[10px] text-gray-300 dark:text-[#2a5a54] text-right mt-1">
-                {stranka.length}/254
-              </p>
-            </>
-          )}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: `${ACCENT}15` }}>
+              <User size={12} style={{ color: ACCENT }} />
+            </div>
+            <span className="text-xs font-bold text-gray-600 dark:text-[#a8d5cf]">PRIMATELJ</span>
+          </div>
+          <input
+            type="text"
+            value={stranka}
+            onChange={(e) => setStranka(e.target.value)}
+            placeholder="Ime ili naziv primatelja..."
+            maxLength={254}
+            className={inputCls}
+          />
+          <p className="text-[10px] text-gray-300 dark:text-[#2a5a54] text-right mt-1">
+            {stranka.length}/254
+          </p>
         </div>
       </div>
 
@@ -371,7 +232,7 @@ export function BlagajnaIsplate({ onIsplataSuccess }: BlagajnaIsplateProps) {
               className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
               style={{ background: `${ACCENT}20`, color: ACCENT }}
             >
-              {VRSTE.find((v) => v.value === vrsta)?.label}
+              Isplata
             </span>
           </div>
         </div>
@@ -473,7 +334,7 @@ export function BlagajnaIsplate({ onIsplataSuccess }: BlagajnaIsplateProps) {
         <div className="flex-shrink-0 p-5 border-t border-gray-100 dark:border-[#1a3d38]">
           <button
             onClick={handleSnimi}
-            disabled={slanje}
+            disabled={slanje || missingRequiredFields}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-60"
             style={{ background: ACCENT }}
           >
@@ -482,6 +343,36 @@ export function BlagajnaIsplate({ onIsplataSuccess }: BlagajnaIsplateProps) {
           </button>
         </div>
       </div>
+
+      {showValidationModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-gray-200 dark:border-[#1e4a44] bg-white dark:bg-[#0f2320] shadow-2xl p-5">
+            <div className="flex items-start gap-3">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: `${ACCENT}14` }}
+              >
+                <AlertTriangle size={18} style={{ color: ACCENT }} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-gray-800 dark:text-[#e6f4f2]">Obavezna polja</p>
+                <p className="text-xs text-gray-500 dark:text-[#9dc8c2] mt-1">{validationMessage}</p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowValidationModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white"
+                style={{ background: ACCENT }}
+              >
+                U redu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
