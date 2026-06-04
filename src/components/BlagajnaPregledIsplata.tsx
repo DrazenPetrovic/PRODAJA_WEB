@@ -28,6 +28,7 @@ interface Isplata {
   biljeska: string | null;
   id_operatera: number;
   naziv_operatera: string | null;
+  id_blagajne: number | null;
 }
 
 const fmtDatum = (dt: string) => {
@@ -54,7 +55,7 @@ const filterInputCls =
 
 export function BlagajnaPregledIsplata() {
   const [isplate, setIsplate] = useState<Isplata[]>([]);
-  const [partneriMap, setPartneriMap] = useState<Map<number, string>>(new Map());
+  const [nalogodavciMap, setNalogodavciMap] = useState<Map<number, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
@@ -67,18 +68,18 @@ export function BlagajnaPregledIsplata() {
   const ucitaj = async () => {
     setLoading(true);
     try {
-      const [resIsplate, resPartneri] = await Promise.all([
+      const [resIsplate, resNalogodavci] = await Promise.all([
         fetch(`${API_URL}/api/blagajna/pregled-isplata`, { credentials: "include" }),
-        fetch(`${API_URL}/api/partneri`, { credentials: "include" }),
+        fetch(`${API_URL}/api/blagajna/nalogodavci`, { credentials: "include" }),
       ]);
-      const [dI, dP] = await Promise.all([resIsplate.json(), resPartneri.json()]);
+      const [dI, dN] = await Promise.all([resIsplate.json(), resNalogodavci.json()]);
       if (dI.success) setIsplate(dI.isplate);
-      if (dP.success) {
-        const pm = new Map<number, string>();
-        dP.data.forEach((p: { sifra_partnera: string; naziv_partnera: string }) => {
-          pm.set(Number(p.sifra_partnera), p.naziv_partnera);
+      if (dN.success) {
+        const nm = new Map<number, string>();
+        dN.data.forEach((n: { id_eksterni: number; naziv_radnika: string }) => {
+          nm.set(Number(n.id_eksterni), n.naziv_radnika);
         });
-        setPartneriMap(pm);
+        setNalogodavciMap(nm);
       }
     } finally {
       setLoading(false);
@@ -88,8 +89,8 @@ export function BlagajnaPregledIsplata() {
   useEffect(() => { ucitaj(); }, []);
 
   const strankaLabel = (i: Isplata) => {
-    if (i.id_partnera && partneriMap.has(i.id_partnera))
-      return partneriMap.get(i.id_partnera)!;
+    if (i.id_partnera && nalogodavciMap.has(i.id_partnera))
+      return nalogodavciMap.get(i.id_partnera)!;
     return i.stranka ?? "—";
   };
 
@@ -247,11 +248,11 @@ export function BlagajnaPregledIsplata() {
                 <li key={i.isplata_id}>
                   {noviDatum && (
                     <div className={`flex items-center gap-3 ${idx === 0 ? "mb-2" : "my-3"}`}>
-                      <div className="flex-1 h-px" style={{ background: `${ACCENT}40` }} />
-                      <span className="text-[10px] font-semibold tracking-wider px-1" style={{ color: ACCENT }}>
+                      <div className="flex-1 h-px" style={{ background: `${PRIMARY}40` }} />
+                      <span className="text-[10px] font-semibold tracking-wider px-1" style={{ color: PRIMARY }}>
                         {datumDanas}
                       </span>
-                      <div className="flex-1 h-px" style={{ background: `${ACCENT}40` }} />
+                      <div className="flex-1 h-px" style={{ background: `${PRIMARY}40` }} />
                     </div>
                   )}
                   <div
@@ -290,6 +291,14 @@ export function BlagajnaPregledIsplata() {
                           {i.biljeska}
                         </p>
                       )}
+                    </div>
+
+                    {/* Blagajna */}
+                    <div className="w-24 flex-shrink-0 text-center">
+                      <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] uppercase tracking-wide">Blagajna</p>
+                      <p className="text-sm font-bold" style={{ color: PRIMARY }}>
+                        {i.id_blagajne != null ? `#${i.id_blagajne}` : "—"}
+                      </p>
                     </div>
 
                     {/* Iznos + operater */}

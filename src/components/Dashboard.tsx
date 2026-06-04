@@ -412,10 +412,10 @@ export function Dashboard({
               }}
             />
             <p
-              className="text-lg font-bold leading-tight tracking-wide"
+              className="text-xs font-bold leading-tight tracking-wide font-mono"
               style={{ color: ACCENT }}
             >
-              Prodaja
+              DB: 185.99.2.164
             </p>
           </button>
 

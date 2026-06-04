@@ -2,7 +2,7 @@ import { withConnection } from "./db.service.js";
 
 const fmtLocalDatetime = (date) => {
   const p = (n) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${p(date.getMonth()+1)}-${p(date.getDate())} ${p(date.getHours())}:${p(date.getMinutes())}:${p(date.getSeconds())}`;
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())} ${p(date.getHours())}:${p(date.getMinutes())}:${p(date.getSeconds())}`;
 };
 
 // Combines user-picked date with current wall-clock time so blagajna session comparisons work correctly.
@@ -33,13 +33,21 @@ export const getRacuniPartnera = async (idPartnera) => {
        GROUP BY r.id, r.broj_racuna, r.datum_racuna, r.ukupno_za_naplatu
        HAVING ostatak > 0
        ORDER BY r.datum_racuna ASC`,
-      [idPartnera]
+      [idPartnera],
     );
     return rows;
   });
 };
 
-export const unosUplate = async ({ idPartnera, nacinPlacanja, datum, biljeska, idOperatera, stavke, idBlagajne }) => {
+export const unosUplate = async ({
+  idPartnera,
+  nacinPlacanja,
+  datum,
+  biljeska,
+  idOperatera,
+  stavke,
+  idBlagajne,
+}) => {
   return withConnection(async (connection) => {
     const datumDb = fmtDatumSaTrenutnimVremenom(datum);
 
@@ -50,18 +58,34 @@ export const unosUplate = async ({ idPartnera, nacinPlacanja, datum, biljeska, i
         `INSERT INTO erp_prodaja.blagajna_uplate
            (id_partnera, ukupan_iznos, nacin_placanja, datum, biljeska, id_operatera, id_blagajne)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [idPartnera, stavke[0].iznos, nacinPlacanja, datumDb, biljeska || null, idOperatera, idBlagajne || null]
+        [
+          idPartnera,
+          stavke[0].iznos,
+          nacinPlacanja,
+          datumDb,
+          biljeska || null,
+          idOperatera,
+          idBlagajne || null,
+        ],
       );
       return result.insertId;
     }
 
     const stavkeJson = JSON.stringify(
-      stavke.map((s) => ({ racun_id: s.racun_id, iznos: s.iznos }))
+      stavke.map((s) => ({ racun_id: s.racun_id, iznos: s.iznos })),
     );
 
     const [rows] = await connection.execute(
       "CALL erp_prodaja.sp_unos_uplate(?, ?, ?, ?, ?, ?, ?)",
-      [idPartnera, nacinPlacanja, datumDb, biljeska || "", idOperatera, stavkeJson, idBlagajne || null]
+      [
+        idPartnera,
+        nacinPlacanja,
+        datumDb,
+        biljeska || "",
+        idOperatera,
+        stavkeJson,
+        idBlagajne || null,
+      ],
     );
 
     const result = rows[0][0];
@@ -74,7 +98,10 @@ export const unosUplate = async ({ idPartnera, nacinPlacanja, datum, biljeska, i
 
 export const getPregledUplata = async () => {
   return withConnection(async (connection) => {
-    const [rows] = await connection.execute("CALL erp_prodaja.sp_pregled_uplata()");
+    const [rows] = await connection.execute(
+      "CALL erp_prodaja.sp_pregled_uplata()",
+    );
+
     const rawRows = rows[0];
 
     const map = new Map();
@@ -89,6 +116,7 @@ export const getPregledUplata = async () => {
           biljeska: row.biljeska,
           id_operatera: row.id_operatera,
           naziv_operatera: row.naziv_operatera ?? null,
+          id_blagajne: row.id_blagajne ?? null,
           stavke: [],
         });
       }
@@ -106,7 +134,9 @@ export const getPregledUplata = async () => {
 
 export const getPregledIsplata = async () => {
   return withConnection(async (connection) => {
-    const [rows] = await connection.execute("CALL erp_prodaja.sp_pregled_isplata()");
+    const [rows] = await connection.execute(
+      "CALL erp_prodaja.sp_pregled_isplata()",
+    );
     return rows[0];
   });
 };
@@ -129,23 +159,26 @@ export const getBlagajnaStanje = async () => {
 
     if (stanje.status === "otvorena") {
       // datum_otvaranja may be a Date object from mysql2 — convert to local string to avoid UTC serialization mismatch
-      const datumOtvaranja = stanje.datum_otvaranja instanceof Date
-        ? fmtLocalDatetime(stanje.datum_otvaranja)
-        : String(stanje.datum_otvaranja);
+      const datumOtvaranja =
+        stanje.datum_otvaranja instanceof Date
+          ? fmtLocalDatetime(stanje.datum_otvaranja)
+          : String(stanje.datum_otvaranja);
 
       const [[uplateRow]] = await connection.execute(
         `SELECT IFNULL(SUM(ukupan_iznos), 0) AS ukupno FROM erp_prodaja.blagajna_uplate WHERE datum >= ?`,
-        [datumOtvaranja]
+        [datumOtvaranja],
       );
       const [[isplateRow]] = await connection.execute(
         `SELECT IFNULL(SUM(iznos), 0) AS ukupno FROM erp_prodaja.blagajna_isplate WHERE datum >= ?`,
-        [datumOtvaranja]
+        [datumOtvaranja],
       );
 
       stanje.tekuce_uplate = Number(uplateRow.ukupno);
       stanje.tekuce_isplate = Number(isplateRow.ukupno);
       stanje.tekuci_obracun =
-        Number(stanje.pocetak_gotovine) + Number(uplateRow.ukupno) - Number(isplateRow.ukupno);
+        Number(stanje.pocetak_gotovine) +
+        Number(uplateRow.ukupno) -
+        Number(isplateRow.ukupno);
     }
 
     return stanje;
@@ -155,7 +188,10 @@ export const getBlagajnaStanje = async () => {
 export const otvoriBlagajnu = async ({ idOperatera }) => {
   return withConnection(async (connection) => {
     const now = fmtLocalDatetime(new Date());
-    const [rows] = await connection.execute("CALL erp_prodaja.sp_otvori_blagajnu(?, ?)", [idOperatera, now]);
+    const [rows] = await connection.execute(
+      "CALL erp_prodaja.sp_otvori_blagajnu(?, ?)",
+      [idOperatera, now],
+    );
     const result = rows[0][0];
     if (result.rezultat === -1) throw new Error(result.poruka);
     return result;
@@ -164,23 +200,43 @@ export const otvoriBlagajnu = async ({ idOperatera }) => {
 
 export const zatvoriBlagajnu = async ({ idOperatera, krajStvarno }) => {
   return withConnection(async (connection) => {
-    const [rows] = await connection.execute("CALL erp_prodaja.sp_zatvori_blagajnu(?, ?)", [
-      idOperatera,
-      krajStvarno,
-    ]);
+    const [rows] = await connection.execute(
+      "CALL erp_prodaja.sp_zatvori_blagajnu(?, ?)",
+      [idOperatera, krajStvarno],
+    );
     const result = rows[0][0];
     if (result.rezultat === -1) throw new Error(result.poruka);
     return result;
   });
 };
 
-export const unosIsplate = async ({ vrsta, racunId, idPartnera, stranka, iznos, datum, biljeska, idOperatera, idBlagajne }) => {
+export const unosIsplate = async ({
+  vrsta,
+  racunId,
+  idPartnera,
+  stranka,
+  iznos,
+  datum,
+  biljeska,
+  idOperatera,
+  idBlagajne,
+}) => {
   return withConnection(async (connection) => {
     const datumDb = fmtDatumSaTrenutnimVremenom(datum);
 
     const [rows] = await connection.execute(
       "CALL erp_prodaja.sp_unos_isplate(?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      [vrsta, racunId || null, idPartnera || null, stranka || null, iznos, datumDb, biljeska || null, idOperatera, idBlagajne || null]
+      [
+        vrsta,
+        racunId || null,
+        idPartnera || null,
+        stranka || null,
+        iznos,
+        datumDb,
+        biljeska || null,
+        idOperatera,
+        idBlagajne || null,
+      ],
     );
 
     const result = rows[0][0];
@@ -193,7 +249,9 @@ export const unosIsplate = async ({ vrsta, racunId, idPartnera, stranka, iznos, 
 
 export const getPregledBlagajniLista = async () => {
   return withConnection(async (connection) => {
-    const [rows] = await connection.execute("CALL erp_prodaja.sp_pregled_blagajne_lista()");
+    const [rows] = await connection.execute(
+      "CALL erp_prodaja.sp_pregled_blagajne_lista()",
+    );
     return rows[0];
   });
 };
@@ -202,12 +260,12 @@ export const getPregledBlagajnaDetalj = async (idBlagajne) => {
   return withConnection(async (connection) => {
     const [rows] = await connection.execute(
       "CALL erp_prodaja.sp_pregled_blagajna_detalj(?)",
-      [idBlagajne]
+      [idBlagajne],
     );
     return {
       blagajna: rows[0][0] ?? null,
-      uplate:   rows[1] ?? [],
-      isplate:  rows[2] ?? [],
+      uplate: rows[1] ?? [],
+      isplate: rows[2] ?? [],
     };
   });
 };

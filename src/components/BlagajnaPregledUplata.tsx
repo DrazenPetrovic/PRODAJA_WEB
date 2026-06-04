@@ -28,6 +28,7 @@ interface Uplata {
   biljeska: string | null;
   id_operatera: number;
   naziv_operatera: string | null;
+  id_blagajne: number | null;
   stavke: UplataStavka[];
 }
 
@@ -320,6 +321,14 @@ export function BlagajnaPregledUplata() {
                           {u.biljeska}
                         </p>
                       )}
+                    </div>
+
+                    {/* Blagajna */}
+                    <div className="w-24 flex-shrink-0 text-center">
+                      <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] uppercase tracking-wide">Blagajna</p>
+                      <p className="text-sm font-bold" style={{ color: PRIMARY }}>
+                        {u.id_blagajne != null ? `#${u.id_blagajne}` : "—"}
+                      </p>
                     </div>
 
                     {/* Stavke badge */}
