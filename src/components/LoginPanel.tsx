@@ -64,7 +64,7 @@ export function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
                 <img
                   src={`${import.meta.env.BASE_URL}foto/IKONA.png`}
                   alt="Ikona"
-                  className="h-24 object-contain"
+                  className="h-36 object-contain"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
               </div>
@@ -100,7 +100,7 @@ export function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
       <div className="w-full max-w-md md:max-w-lg lg:max-w-xl">
         <div className="bg-white dark:bg-[#0f2320] rounded-2xl shadow-2xl p-8 md:p-10 lg:p-12 border-2 border-transparent dark:border-[#1a3d38]">
           <div className="flex justify-center mb-8">
-            <div className="w-32 h-32 md:w-40 md:h-40 flex items-center justify-center">
+            <div className="w-44 h-44 md:w-52 md:h-52 flex items-center justify-center">
               <img
                 src={`${import.meta.env.BASE_URL}foto/IKONA.png`}
                 alt="Ikona"
@@ -110,12 +110,9 @@ export function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
             </div>
           </div>
 
-          <h1 className="text-center text-2xl font-bold text-gray-800 dark:text-[#e6f4f2] mb-2">
+          <h1 className="text-center text-2xl font-bold mb-8 uppercase" style={{ color: PRIMARY }}>
             Prodaja
           </h1>
-          <p className="text-center mb-8" style={{ color: PRIMARY }}>
-            Karpas Ambalaže
-          </p>
 
           <form onSubmit={handleLogin} autoComplete="on" className="space-y-5 md:space-y-6">
             <div>

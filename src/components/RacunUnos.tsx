@@ -1190,6 +1190,7 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
                               stavke={kr.stavkeSnimak.map((s, i) => ({
                                 id_stavke: i + 1,
                                 id_artikla: s.artikal.sifra_proizvoda,
+                                naziv_artikla: s.artikal.naziv_proizvoda,
                                 kolicina_artikla: s.kolicina,
                                 maloprodajna_cijena: s.mpc,
                                 ukupno: +(s.kolicina * s.mpc).toFixed(2),
