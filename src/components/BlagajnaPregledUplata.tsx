@@ -278,11 +278,11 @@ export function BlagajnaPregledUplata() {
                 <li key={u.uplata_id}>
                   {noviDatum && (
                     <div className={`flex items-center gap-3 ${idx === 0 ? "mb-2" : "my-3"}`}>
-                      <div className="flex-1 h-px" style={{ background: `${ACCENT}40` }} />
-                      <span className="text-[10px] font-semibold tracking-wider px-1" style={{ color: ACCENT }}>
+                      <div className="flex-1 h-0.5 rounded-full" style={{ background: `${ACCENT}70` }} />
+                      <span className="text-sm font-bold tracking-wider px-2" style={{ color: ACCENT }}>
                         {datumDanas}
                       </span>
-                      <div className="flex-1 h-px" style={{ background: `${ACCENT}40` }} />
+                      <div className="flex-1 h-0.5 rounded-full" style={{ background: `${ACCENT}70` }} />
                     </div>
                   )}
                   <div
@@ -291,7 +291,7 @@ export function BlagajnaPregledUplata() {
                   >
                   <button
                     onClick={() => toggleProsiren(u.uplata_id)}
-                    className="w-full text-left px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-[#0d2b27] transition-colors"
+                    className="relative w-full text-left px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-[#0d2b27] transition-colors"
                   >
                     {/* Ikona */}
                     <div
@@ -324,7 +324,7 @@ export function BlagajnaPregledUplata() {
                     </div>
 
                     {/* Blagajna */}
-                    <div className="w-24 flex-shrink-0 text-center">
+                    <div className="absolute left-1/2 -translate-x-1/2 text-center">
                       <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] uppercase tracking-wide">Blagajna</p>
                       <p className="text-sm font-bold" style={{ color: PRIMARY }}>
                         {u.id_blagajne != null ? `#${u.id_blagajne}` : "—"}

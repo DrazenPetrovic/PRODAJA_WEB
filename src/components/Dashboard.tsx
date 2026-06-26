@@ -415,7 +415,7 @@ export function Dashboard({
               className="text-xs font-bold leading-tight tracking-wide font-mono"
               style={{ color: ACCENT }}
             >
-              DB: 185.99.2.164
+              DB: {import.meta.env.VITE_DB_HOST}
             </p>
           </button>
 

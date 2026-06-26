@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI\\\\!123 erp_prodaja -e \"SHOW CREATE PROCEDURE sp_pregled_uplata\\\\G\")",
+      "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI\\\\!123 erp_prodaja -e \"SHOW CREATE PROCEDURE sp_pregled_isplata\\\\G\")",
+      "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI!123 erp_prodaja -e ' *)",
+      "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI\\\\!123 erp_prodaja --delimiter=\";\" -e \"SHOW GRANTS FOR 'erp_korisnik'@'%'\")",
+      "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI\\\\!123 erp_prodaja)",
+      "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI\\\\!123 erp_prodaja --delimiter=\"//\")",
+      "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI\\\\!123 erp_prodaja -e \"CALL sp_pregled_uplata\\(\\)\")",
+      "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI\\\\!123 erp_prodaja -e \"CALL sp_pregled_isplata\\(\\)\")"
+    ]
+  }
+}

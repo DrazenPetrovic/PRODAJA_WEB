@@ -248,15 +248,15 @@ export function BlagajnaPregledIsplata() {
                 <li key={i.isplata_id}>
                   {noviDatum && (
                     <div className={`flex items-center gap-3 ${idx === 0 ? "mb-2" : "my-3"}`}>
-                      <div className="flex-1 h-px" style={{ background: `${PRIMARY}40` }} />
-                      <span className="text-[10px] font-semibold tracking-wider px-1" style={{ color: PRIMARY }}>
+                      <div className="flex-1 h-0.5 rounded-full" style={{ background: `${PRIMARY}70` }} />
+                      <span className="text-sm font-bold tracking-wider px-2" style={{ color: PRIMARY }}>
                         {datumDanas}
                       </span>
-                      <div className="flex-1 h-px" style={{ background: `${PRIMARY}40` }} />
+                      <div className="flex-1 h-0.5 rounded-full" style={{ background: `${PRIMARY}70` }} />
                     </div>
                   )}
                   <div
-                    className="rounded-xl overflow-hidden border-2 px-5 py-3.5 flex items-center gap-4"
+                    className="relative rounded-xl overflow-hidden border-2 px-5 py-3.5 flex items-center gap-4"
                     style={{ borderColor: `${ACCENT}30` }}
                   >
                     {/* Ikona */}
@@ -294,7 +294,7 @@ export function BlagajnaPregledIsplata() {
                     </div>
 
                     {/* Blagajna */}
-                    <div className="w-24 flex-shrink-0 text-center">
+                    <div className="absolute left-1/2 -translate-x-1/2 text-center">
                       <p className="text-[10px] text-gray-400 dark:text-[#4a7a74] uppercase tracking-wide">Blagajna</p>
                       <p className="text-sm font-bold" style={{ color: PRIMARY }}>
                         {i.id_blagajne != null ? `#${i.id_blagajne}` : "—"}
