@@ -8,7 +8,37 @@
       "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI\\\\!123 erp_prodaja)",
       "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI\\\\!123 erp_prodaja --delimiter=\"//\")",
       "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI\\\\!123 erp_prodaja -e \"CALL sp_pregled_uplata\\(\\)\")",
-      "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI\\\\!123 erp_prodaja -e \"CALL sp_pregled_isplata\\(\\)\")"
+      "Bash(mysql -h 94.130.111.127 -P 3306 -u erp_korisnik -pTeletabisI\\\\!123 erp_prodaja -e \"CALL sp_pregled_isplata\\(\\)\")",
+      "Bash(find . -iname \"*.cs\" -not -path \"*/node_modules/*\")",
+      "Bash(ls aplikacije *)",
+      "Bash(node -e ' *)",
+      "Bash(find /d -maxdepth 4 -iname \"*print*agent*\")",
+      "Bash(find /d -maxdepth 3 -type d)",
+      "Bash(find \"/d/WEB_KOMERCIJALA/PRINT_AGENT\" -type f | grep -v \"bin/\\\\|obj/\")",
+      "Read(//d/WEB_KOMERCIJALA/PRINT_AGENT/**)",
+      "Read(//d/WEB_KOMERCIJALA/PRINT_AGENT/local-print-agent/**)",
+      "Read(//d/WEB_KOMERCIJALA/PRINT_AGENT/local-print-agent/Endpoints/**)",
+      "Read(//d/WEB_KOMERCIJALA/PRINT_AGENT/local-print-agent/Services/**)",
+      "Read(//d/WEB_KOMERCIJALA/PRINT_AGENT/local-print-agent/Models/**)",
+      "Bash(find \"/d/WEB_KOMERCIJALA/PRINT_AGENT\" -iname \"*.log\" 2>/dev/null | grep -v \"/.git/\")",
+      "Read(//d/WEB_KOMERCIJALA/PRINT_AGENT/local-print-agent/bin/Release/net6.0-windows/win-x64/publish/**)",
+      "Read(//d/WEB_KOMERCIJALA/**)",
+      "Bash(find \"d:/WEB_KOMERCIJALA\" -maxdepth 3 -iname \"*PRINT_AGENT*\" 2>/dev/null)",
+      "Bash(find \"d:/WEB_KOMERCIJALA/PRINT_AGENT\" -maxdepth 4 2>/dev/null)",
+      "Bash(find \"d:/WEB_KOMERCIJALA/PRINT_AGENT\" -path \"*/.git\" -prune -o -type f -print 2>/dev/null)",
+      "WebSearch",
+      "Bash(npx tsc *)",
+      "Bash(dotnet --version)",
+      "Read(//d/WEB_KOMERCIJALA/PRINT_AGENT/local-print-agent/bin/Debug/net6.0-windows/**)",
+      "Bash(dotnet publish *)",
+      "Bash(find \"d:/WEB_KOMERCIJALA/PRINT_AGENT/local-print-agent/bin/Release/net6.0-windows/win-x64/publish\" -maxdepth 1)",
+      "PowerShell(sc.exe qc LocalPrintAgent)",
+      "Bash(find \"P:/1_WEB_APLIKACIJE/PDF_RENDER/PRINT_AGENT\" -maxdepth 1 2>&1)",
+      "Read(//p/1_WEB_APLIKACIJE/PDF_RENDER/PRINT_AGENT/**)",
+      "PowerShell(sc.exe stop LocalPrintAgent)"
+    ],
+    "additionalDirectories": [
+      "d:\\WEB_KOMERCIJALA\\PRINT_AGENT\\local-print-agent\\Services"
     ]
   }
 }

@@ -166,15 +166,10 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
     return "";
   };
 
-  const sendDirectPrintFromPreview = async (status: PrintServiceStatus) => {
+  const buildPdfFromPreview = async () => {
     const printSource = directPrintRef.current;
     if (!printSource) {
       throw { code: "INVALID_REQUEST", message: "Nema izvora za štampu" };
-    }
-
-    const printerName = resolvePrinterName(status);
-    if (!printerName) {
-      throw { code: "PRINTER_NOT_FOUND", message: "Printer nije pronađen" };
     }
 
     const canvas = await html2canvas(printSource, {
@@ -204,6 +199,17 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
       "FAST",
     );
 
+    return pdf;
+  };
+
+  const sendDirectPrintFromPreview = async (status: PrintServiceStatus) => {
+    const printerName = resolvePrinterName(status);
+    if (!printerName) {
+      throw { code: "PRINTER_NOT_FOUND", message: "Printer nije pronađen" };
+    }
+
+    const pdf = await buildPdfFromPreview();
+
     const documentBase64 = bytesToBase64(
       new Uint8Array(pdf.output("arraybuffer")),
     );
@@ -218,6 +224,18 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
       documentType,
       documentBase64,
     });
+  };
+
+  const handleSavePdf = async () => {
+    setPrintError(null);
+    try {
+      const pdf = await buildPdfFromPreview();
+      const safeTitle = job.title.replace(/[\\/:*?"<>|]+/g, "_").trim() || "dokument";
+      pdf.save(`${safeTitle}_${effectiveFormat}.pdf`);
+    } catch {
+      setPrintError("Greška pri generisanju PDF-a.");
+      notify("Greška pri generisanju PDF-a.", { tone: "error", durationMs: 9000 });
+    }
   };
 
   const runBrowserPrint = () => {
@@ -601,6 +619,14 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
               >
                 <Printer size={15} />
                 Pošalji na štampu
+              </button>
+              <button
+                onClick={() => {
+                  void handleSavePdf();
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-[#9fc7c1] border border-gray-200 dark:border-[#1e4a44] hover:bg-gray-50 dark:hover:bg-[#1a3d38] transition-all"
+              >
+                Sačuvaj PDF
               </button>
               <button
                 onClick={onClose}
