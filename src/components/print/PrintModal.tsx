@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
-import { Printer, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Loader2, Printer, X, ZoomIn, ZoomOut } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import {
@@ -73,6 +73,7 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [printError, setPrintError] = useState<string | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [serviceStatus, setServiceStatus] = useState<PrintServiceStatus | null>(
     null,
   );
@@ -325,31 +326,53 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
 
   const handlePrint = async () => {
     setPrintError(null);
+    setIsPrinting(true);
 
-    let latestStatus = serviceStatus;
+    try {
+      let latestStatus = serviceStatus;
 
-    if (!latestStatus || statusLoading) {
-      latestStatus = await loadServiceStatus();
-    }
-
-    const canUseDirectPrint = isServiceReadyForDirectPrint(latestStatus);
-
-    if (!canUseDirectPrint) {
-      if (job.allowBrowserPrintFallback === true) {
-        runBrowserPrint();
+      if (!latestStatus || statusLoading) {
+        latestStatus = await loadServiceStatus();
       }
-      return;
-    }
 
-    if (job.onPrint) {
+      const canUseDirectPrint = isServiceReadyForDirectPrint(latestStatus);
+
+      if (!canUseDirectPrint) {
+        if (job.allowBrowserPrintFallback === true) {
+          runBrowserPrint();
+        }
+        return;
+      }
+
+      if (job.onPrint) {
+        try {
+          await job.onPrint({
+            format: effectiveFormat,
+            orientation: effectiveOrientation,
+          });
+          notify("Stampa uspjesna");
+          onClose();
+          return;
+        } catch (error) {
+          const code =
+            typeof error === "object" && error !== null && "code" in error
+              ? String((error as { code: unknown }).code)
+              : undefined;
+          const message = mapPrintError(code);
+          setPrintError(message);
+          notify(message, { tone: "error", durationMs: 9000 });
+          return;
+        }
+      }
+
+      if (!latestStatus) {
+        return;
+      }
+
       try {
-        await job.onPrint({
-          format: effectiveFormat,
-          orientation: effectiveOrientation,
-        });
+        await sendDirectPrintFromPreview(latestStatus);
         notify("Stampa uspjesna");
         onClose();
-        return;
       } catch (error) {
         const code =
           typeof error === "object" && error !== null && "code" in error
@@ -358,26 +381,9 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
         const message = mapPrintError(code);
         setPrintError(message);
         notify(message, { tone: "error", durationMs: 9000 });
-        return;
       }
-    }
-
-    if (!latestStatus) {
-      return;
-    }
-
-    try {
-      await sendDirectPrintFromPreview(latestStatus);
-      notify("Stampa uspjesna");
-      onClose();
-    } catch (error) {
-      const code =
-        typeof error === "object" && error !== null && "code" in error
-          ? String((error as { code: unknown }).code)
-          : undefined;
-      const message = mapPrintError(code);
-      setPrintError(message);
-      notify(message, { tone: "error", durationMs: 9000 });
+    } finally {
+      setIsPrinting(false);
     }
   };
 
@@ -612,19 +618,26 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
 
               <button
                 onClick={() => {
+                  if (isPrinting) return;
                   void handlePrint().catch(() => undefined);
                 }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-110"
+                disabled={isPrinting}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-70 disabled:cursor-not-allowed"
                 style={{ background: PRIMARY }}
               >
-                <Printer size={15} />
-                Pošalji na štampu
+                {isPrinting ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Printer size={15} />
+                )}
+                {isPrinting ? "Štampanje u toku..." : "Pošalji na štampu"}
               </button>
               <button
                 onClick={() => {
                   void handleSavePdf();
                 }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-[#9fc7c1] border border-gray-200 dark:border-[#1e4a44] hover:bg-gray-50 dark:hover:bg-[#1a3d38] transition-all"
+                disabled={isPrinting}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-[#9fc7c1] border border-gray-200 dark:border-[#1e4a44] hover:bg-gray-50 dark:hover:bg-[#1a3d38] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Sačuvaj PDF
               </button>
