@@ -370,8 +370,15 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
       }
 
       try {
-        await sendDirectPrintFromPreview(latestStatus);
-        notify("Stampa uspjesna");
+        const result = await sendDirectPrintFromPreview(latestStatus);
+        if (result.paperSize && result.paperSize !== effectiveFormat) {
+          notify(
+            `Štampano u ${result.paperSize} formatu jer štampač ne podržava ${effectiveFormat}.`,
+            { tone: "error", durationMs: 9000 },
+          );
+        } else {
+          notify("Stampa uspjesna");
+        }
         onClose();
       } catch (error) {
         const code =

@@ -23,6 +23,11 @@ export interface PrintServiceResponse {
   success?: boolean;
   ok?: boolean;
   jobId?: string;
+  mode?: string;
+  printerUsed?: string;
+  paperSize?: PaperSize;
+  copies?: number;
+  durationMs?: number;
   errorCode?: string;
   message?: string;
 }
@@ -242,6 +247,8 @@ export function mapPrintError(code?: string): string {
       return "Štampanje je zapelo (isteklo vrijeme čekanja).";
     case "INVALID_REQUEST":
       return "Polja za štampu nisu dobro popunjena.";
+    case "PRINT_FAILED":
+      return "Štampač ne podržava traženi format papira (ni A5 ni A4).";
     default:
       return "Greška pri slanju na print servis.";
   }
