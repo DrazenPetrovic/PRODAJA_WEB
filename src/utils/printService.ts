@@ -4,8 +4,12 @@ export function getPrintServiceBaseUrl(): string {
 
 const PRINT_SERVICE_URL = getPrintServiceBaseUrl();
 
+// Zadnji printer sačuvan u Opcije (Dashboard) — koristi ga PrintModal umjesto
+// da nagađa OS default printer, koji ne mora biti isti kao printer za račune.
+export const PRINTER_PREFERENCE_KEY = "printService.selectedPrinter";
+
 export type PrintMode = "pdf" | "text" | "raw";
-export type PaperSize = "A4" | "A5";
+export type PaperSize = "A4";
 export type Orientation = "portrait" | "landscape";
 
 export interface PrintServiceRequest {
@@ -248,7 +252,7 @@ export function mapPrintError(code?: string): string {
     case "INVALID_REQUEST":
       return "Polja za štampu nisu dobro popunjena.";
     case "PRINT_FAILED":
-      return "Štampač ne podržava traženi format papira (ni A5 ni A4).";
+      return "Štampač ne podržava traženi format papira (A4).";
     default:
       return "Greška pri slanju na print servis.";
   }

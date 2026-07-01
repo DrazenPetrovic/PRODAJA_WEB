@@ -43,12 +43,13 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
   return (
     <div
       style={{
-        fontFamily: "Arial, sans-serif",
-        fontSize: 11,
-        color: "#1a1a1a",
-        padding: "5mm 6mm",
+        width: "210mm",
+        minHeight: "297mm",
         boxSizing: "border-box",
-        height: "100%",
+        padding: "14mm 16mm",
+        fontFamily: "Arial, sans-serif",
+        fontSize: 12,
+        color: "#1a1a1a",
         background: "white",
       }}
     >
@@ -57,13 +58,13 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
         style={{
           textAlign: "center",
           borderBottom: `2px solid ${PRIMARY}`,
-          paddingBottom: 8,
-          marginBottom: 10,
+          paddingBottom: 12,
+          marginBottom: 18,
         }}
       >
         <div
           style={{
-            fontSize: 20,
+            fontSize: 26,
             fontWeight: 800,
             color: PRIMARY,
             letterSpacing: "0.02em",
@@ -74,7 +75,7 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
       </div>
 
       {/* ── Podaci o računu i partneru ── */}
-      <div style={{ display: "flex", gap: 24, marginBottom: 20 }}>
+      <div style={{ display: "flex", gap: 24, marginBottom: 24 }}>
         {/* Partner */}
         <div
           style={{
@@ -82,13 +83,13 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
             background: `${PRIMARY}0a`,
             border: `1px solid ${PRIMARY}30`,
             borderRadius: 6,
-            padding: "10px 14px",
+            padding: "14px 18px",
           }}
         >
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>
             {nazivPartnera}
           </div>
-          <div style={{ fontSize: 9, color: "#666", marginTop: 2 }}>
+          <div style={{ fontSize: 10, color: "#666", marginTop: 3 }}>
             ID partnera: {racun.id_partnera}
           </div>
         </div>
@@ -100,7 +101,7 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
             background: "#f9fafb",
             border: "1px solid #e5e7eb",
             borderRadius: 6,
-            padding: "10px 14px",
+            padding: "14px 18px",
           }}
         >
           {[
@@ -110,19 +111,19 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
           ].map(([label, value]) => (
             <div
               key={label}
-              style={{ display: "flex", gap: 8, marginBottom: 3 }}
+              style={{ display: "flex", gap: 8, marginBottom: 4 }}
             >
               <span
                 style={{
-                  fontSize: 9,
+                  fontSize: 10,
                   color: "#888",
-                  width: 100,
+                  width: 110,
                   flexShrink: 0,
                 }}
               >
                 {label}:
               </span>
-              <span style={{ fontSize: 9, fontWeight: 600, color: "#1a1a1a" }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: "#1a1a1a" }}>
                 {value}
               </span>
             </div>
@@ -131,15 +132,15 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
       </div>
 
       {/* ── Tabela stavki ── */}
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 20 }}>
         <div
           style={{
-            fontSize: 8,
+            fontSize: 9,
             fontWeight: 700,
             color: PRIMARY,
             textTransform: "uppercase",
             letterSpacing: "0.08em",
-            marginBottom: 6,
+            marginBottom: 8,
           }}
         >
           STAVKE
@@ -159,8 +160,8 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
                   style={{
                     color: "white",
                     fontWeight: 700,
-                    fontSize: 8,
-                    padding: "5px 8px",
+                    fontSize: 9,
+                    padding: "7px 10px",
                     textAlign: right ? "right" : "left",
                     textTransform: "uppercase",
                     letterSpacing: "0.04em",
@@ -211,7 +212,7 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
                 style={{
                   ...cell,
                   fontWeight: 700,
-                  fontSize: 11,
+                  fontSize: 12,
                   textAlign: "right",
                   color: "#333",
                 }}
@@ -222,7 +223,7 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
                 style={{
                   ...cell,
                   fontWeight: 800,
-                  fontSize: 13,
+                  fontSize: 15,
                   textAlign: "right",
                   color: ACCENT,
                 }}
@@ -245,13 +246,13 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
             background: `${ACCENT}0d`,
             border: `1px solid ${ACCENT}40`,
             borderRadius: 6,
-            padding: "8px 12px",
-            marginBottom: 16,
+            padding: "10px 14px",
+            marginBottom: 20,
           }}
         >
           <span
             style={{
-              fontSize: 8,
+              fontSize: 9,
               fontWeight: 700,
               color: ACCENT,
               textTransform: "uppercase",
@@ -260,7 +261,7 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
           >
             Napomena:{" "}
           </span>
-          <span style={{ fontSize: 10, color: "#444", fontStyle: "italic" }}>
+          <span style={{ fontSize: 11, color: "#444", fontStyle: "italic" }}>
             {racun.napomena_operatera}
           </span>
         </div>
@@ -270,8 +271,8 @@ export function RacunTemplate({ racun, stavke, nazivPartnera }: Props) {
 }
 
 const cell: React.CSSProperties = {
-  padding: "5px 8px",
-  fontSize: 10,
+  padding: "7px 10px",
+  fontSize: 11,
   borderBottom: "1px solid #e8f5f3",
   verticalAlign: "middle",
 };

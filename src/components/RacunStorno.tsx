@@ -212,9 +212,7 @@ export function RacunStorno() {
           nazivPartnera={kreiraniStorno.nazivPartnera}
         />
       ),
-      defaultFormat: "A5",
       lockOrientation: true,
-      lockFormat: true,
     });
   };
 

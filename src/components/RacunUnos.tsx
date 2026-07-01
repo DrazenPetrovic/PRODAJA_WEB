@@ -1171,8 +1171,6 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
                         const kr = kreiraniRacun;
                         setPrintJob({
                           title: `Račun ${kr.brojRacuna}`,
-                          defaultFormat: "A5",
-                          lockFormat: true,
                           component: (
                             <RacunTemplate
                               racun={{

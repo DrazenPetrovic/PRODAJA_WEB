@@ -415,8 +415,6 @@ export function KarticaPartnera() {
                 onClick={() =>
                   setPrintJob({
                     title: `Kartica partnera — ${selectedPartner.naziv_partnera}`,
-                    defaultFormat: "A4",
-                    lockFormat: true,
                     component: (
                       <KarticaTemplate
                         partner={selectedPartner}

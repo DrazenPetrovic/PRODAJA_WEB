@@ -35,7 +35,12 @@
       "PowerShell(sc.exe qc LocalPrintAgent)",
       "Bash(find \"P:/1_WEB_APLIKACIJE/PDF_RENDER/PRINT_AGENT\" -maxdepth 1 2>&1)",
       "Read(//p/1_WEB_APLIKACIJE/PDF_RENDER/PRINT_AGENT/**)",
-      "PowerShell(sc.exe stop LocalPrintAgent)"
+      "PowerShell(sc.exe stop LocalPrintAgent)",
+      "Bash(cd \"d:/WEB_KOMERCIJALA\" && find . -iname \"*.cs\" -o -iname \"*print-agent*\" -o -iname \"*printagent*\" 2>/dev/null | head -50; echo \"---\"; find . -maxdepth 2 -type d 2>/dev/null)",
+      "Bash(cd \"d:/WEB_KOMERCIJALA/PRINT_AGENT/local-print-agent\" && find . -iname \"*.cs\" -not -path \"*/obj/*\" -not -path \"*/bin/*\")",
+      "Bash(cd \"d:/WEB_KOMERCIJALA/PRINT_AGENT/local-print-agent\" && find . -iname \"*.log\" -o -iname \"appsettings*.json\" 2>/dev/null | grep -v obj | grep -v bin/Debug)",
+      "Read(//d/WEB_KOMERCIJALA/KANCELARIJA_WEB/**)",
+      "Read(//d/WEB_KOMERCIJALA/KANCELARIJA_WEB/src/print/**)"
     ],
     "additionalDirectories": [
       "d:\\WEB_KOMERCIJALA\\PRINT_AGENT\\local-print-agent\\Services"

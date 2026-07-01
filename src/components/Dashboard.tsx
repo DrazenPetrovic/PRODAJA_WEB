@@ -17,6 +17,7 @@ import {
   bytesToBase64,
   getAvailablePrinters,
   mapPrintError,
+  PRINTER_PREFERENCE_KEY,
   sendPrintJob,
 } from "../utils/printService";
 import {
@@ -95,6 +96,9 @@ export function Dashboard({
   const [printServiceStatus, setPrintServiceStatus] = useState<
     "checking" | "online" | "offline"
   >("checking");
+  const [printServiceVersion, setPrintServiceVersion] = useState<
+    string | null
+  >(null);
   const [printJob, setPrintJob] = useState<PrintJob | null>(null);
   const [printers, setPrinters] = useState<string[]>([]);
   const [selectedPrinter, setSelectedPrinter] = useState("");
@@ -211,8 +215,6 @@ export function Dashboard({
     setOpenMenu(null);
     setPrintJob({
       title: `Izvještaj — ${username}`,
-      defaultFormat: "A4",
-      lockFormat: true,
       orientation: "portrait",
       allowBrowserPrintFallback: true,
       component: (
@@ -287,6 +289,7 @@ export function Dashboard({
     }
 
     localStorage.setItem(printerStorageKey, printer);
+    localStorage.setItem(PRINTER_PREFERENCE_KEY, printer);
     showNotif(`Sačuvan printer: ${printer}`);
   };
 
@@ -300,6 +303,7 @@ export function Dashboard({
   useEffect(() => {
     let mounted = true;
     const healthUrl = "http://127.0.0.1:4567/health";
+    const versionUrl = "http://127.0.0.1:4567/version";
 
     const setServiceStatus = (nextStatus: "online" | "offline") => {
       setPrintServiceStatus(nextStatus);
@@ -318,6 +322,30 @@ export function Dashboard({
       printStatusRef.current = nextStatus;
     };
 
+    const fetchPrintServiceVersion = async () => {
+      try {
+        const response = await fetch(versionUrl, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          if (mounted) setPrintServiceVersion(null);
+          return;
+        }
+
+        const data = await response.json();
+        const version =
+          typeof data === "string"
+            ? data
+            : (data?.version ?? data?.ver ?? data?.appVersion ?? null);
+
+        if (mounted) setPrintServiceVersion(version ? String(version) : null);
+      } catch {
+        if (mounted) setPrintServiceVersion(null);
+      }
+    };
+
     const checkPrintService = async () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2500);
@@ -331,11 +359,19 @@ export function Dashboard({
 
         if (!mounted) return;
 
-        setServiceStatus(response.ok ? "online" : "offline");
+        const isOnline = response.ok;
+        setServiceStatus(isOnline ? "online" : "offline");
+
+        if (isOnline) {
+          void fetchPrintServiceVersion();
+        } else {
+          setPrintServiceVersion(null);
+        }
       } catch {
         if (!mounted) return;
 
         setServiceStatus("offline");
+        setPrintServiceVersion(null);
       } finally {
         clearTimeout(timeoutId);
       }
@@ -468,6 +504,10 @@ export function Dashboard({
                       : printServiceStatus === "offline"
                         ? "offline"
                         : "provjera"}
+                    {printServiceStatus === "online" &&
+                      printServiceVersion && (
+                        <span className="normal-case"> (v{printServiceVersion})</span>
+                      )}
                   </p>
                 </div>
               </div>

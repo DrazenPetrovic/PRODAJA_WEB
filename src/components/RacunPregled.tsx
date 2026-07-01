@@ -455,9 +455,7 @@ export function RacunPregled() {
                               setPrintJob({
                                 title: `${r.vrsta_racuna} — ${r.broj_racuna}`,
                                 orientation: "portrait",
-                                defaultFormat: "A5",
                                 lockOrientation: true,
-                                lockFormat: true,
                                 component: (
                                   <RacunTemplate
                                     racun={r}

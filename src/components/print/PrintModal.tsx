@@ -2,13 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
-import { Loader2, Printer, X, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  CheckCircle2,
+  Loader2,
+  Printer,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import {
   bytesToBase64,
   getPrintServiceStatus,
   mapPrintError,
+  PRINTER_PREFERENCE_KEY,
   sendPrintJob,
   type PrintServiceStatus,
 } from "../../utils/printService";
@@ -32,23 +40,14 @@ function resolveDocumentTypeFromTitle(title: string): DocumentType {
   return "izvjestaj";
 }
 
-function resolveFormatByDocumentType(documentType: DocumentType): "A4" | "A5" {
-  if (documentType === "racun" || documentType === "storno") {
-    return "A5";
-  }
-  return "A4";
-}
-
 export interface PrintJob {
   title: string;
   component: React.ReactNode;
   orientation?: "portrait" | "landscape";
-  defaultFormat?: "A4" | "A5";
-  lockFormat?: boolean;
   lockOrientation?: boolean;
   allowBrowserPrintFallback?: boolean;
   onPrint?: (options: {
-    format: "A4" | "A5";
+    format: "A4";
     orientation: "portrait" | "landscape";
   }) => Promise<void> | void;
 }
@@ -64,7 +63,6 @@ interface Props {
 
 export function PrintModal({ job, onClose, onNotify }: Props) {
   const documentType = resolveDocumentTypeFromTitle(job.title);
-  const forcedFormat = resolveFormatByDocumentType(documentType);
 
   const [orientation, setOrientation] = useState<"portrait" | "landscape">(
     job.orientation ?? "portrait",
@@ -74,6 +72,7 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [printError, setPrintError] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [serviceStatus, setServiceStatus] = useState<PrintServiceStatus | null>(
     null,
   );
@@ -126,25 +125,11 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
   const effectiveOrientation = job.lockOrientation
     ? (job.orientation ?? "portrait")
     : orientation;
-  const effectiveFormat = forcedFormat;
+  const effectiveFormat = "A4" as const;
 
-  const pageWidthMm =
-    effectiveOrientation === "portrait"
-      ? effectiveFormat === "A4"
-        ? 210
-        : 148
-      : effectiveFormat === "A4"
-        ? 297
-        : 210;
+  const pageWidthMm = effectiveOrientation === "portrait" ? 210 : 297;
 
-  const pageHeightMm =
-    effectiveOrientation === "portrait"
-      ? effectiveFormat === "A4"
-        ? 297
-        : 210
-      : effectiveFormat === "A4"
-        ? 210
-        : 148;
+  const pageHeightMm = effectiveOrientation === "portrait" ? 297 : 210;
 
   const paperW = pageWidthMm * MM_TO_PX;
 
@@ -162,10 +147,16 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
 
   const resolvePrinterName = (status: PrintServiceStatus | null) => {
     if (!status) return "";
+
+    const preferred = localStorage.getItem(PRINTER_PREFERENCE_KEY)?.trim();
+    if (preferred && status.printers.includes(preferred)) return preferred;
+
     if (status.defaultPrinter.trim()) return status.defaultPrinter.trim();
     if (status.printers.length > 0) return status.printers[0];
     return "";
   };
+
+  const activePrinterName = resolvePrinterName(serviceStatus);
 
   const buildPdfFromPreview = async () => {
     const printSource = directPrintRef.current;
@@ -324,6 +315,15 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
     });
   };
 
+  const handlePrintSuccess = (message = "Stampa uspjesna") => {
+    setShowSuccessOverlay(true);
+    notify(message);
+    setTimeout(() => {
+      setShowSuccessOverlay(false);
+      onClose();
+    }, 2000);
+  };
+
   const handlePrint = async () => {
     setPrintError(null);
     setIsPrinting(true);
@@ -350,8 +350,7 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
             format: effectiveFormat,
             orientation: effectiveOrientation,
           });
-          notify("Stampa uspjesna");
-          onClose();
+          handlePrintSuccess();
           return;
         } catch (error) {
           const code =
@@ -372,14 +371,12 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
       try {
         const result = await sendDirectPrintFromPreview(latestStatus);
         if (result.paperSize && result.paperSize !== effectiveFormat) {
-          notify(
-            `Štampano u ${result.paperSize} formatu jer štampač ne podržava ${effectiveFormat}.`,
-            { tone: "error", durationMs: 9000 },
+          handlePrintSuccess(
+            `Štampano u ${result.paperSize} formatu (štampač ne podržava ${effectiveFormat}).`,
           );
         } else {
-          notify("Stampa uspjesna");
+          handlePrintSuccess();
         }
-        onClose();
       } catch (error) {
         const code =
           typeof error === "object" && error !== null && "code" in error
@@ -400,17 +397,48 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="bg-white dark:bg-[#0f2320] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        className="relative bg-white dark:bg-[#0f2320] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
         style={{ width: 940, maxWidth: "95vw", height: "88vh" }}
       >
+        {showSuccessOverlay && (
+          <div className="absolute inset-0 z-[10000] flex items-center justify-center bg-white/90 dark:bg-[#0f2320]/90 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3">
+              <CheckCircle2 size={48} className="text-emerald-500" />
+              <p className="text-sm font-semibold text-gray-700 dark:text-[#c5e0db]">
+                Uspješno odštampano
+              </p>
+            </div>
+          </div>
+        )}
+
+        {isPrinting && !showSuccessOverlay && (
+          <div className="absolute inset-0 z-[10000] flex items-center justify-center bg-white/90 dark:bg-[#0f2320]/90 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2
+                size={48}
+                className="animate-spin"
+                style={{ color: PRIMARY }}
+              />
+              <p className="text-sm font-semibold text-gray-700 dark:text-[#c5e0db]">
+                Štampanje u toku na printer{" "}
+                {activePrinterName || "nepoznat printer"}...
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div
-          className="flex items-center justify-between px-6 py-3.5 flex-shrink-0"
+          className="relative flex items-center justify-between px-6 py-3.5 flex-shrink-0"
           style={{ background: PRIMARY }}
         >
           <div className="flex items-center gap-3 text-white">
             <Printer size={17} />
             <span className="font-semibold text-sm">{job.title}</span>
+          </div>
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 text-white/80 text-xs whitespace-nowrap">
+            <Printer size={13} />
+            <span>{activePrinterName || "Printer nije izabran"}</span>
           </div>
           <button
             onClick={onClose}
@@ -502,28 +530,6 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
                     className="accent-teal-600"
                   />
                   {o === "portrait" ? "Portrait" : "Landscape"}
-                </label>
-              ))}
-            </div>
-
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-[#4a7a74] mb-2.5">
-                Format papira
-              </p>
-              {(["A4", "A5"] as const).map((f) => (
-                <label
-                  key={f}
-                  className="flex items-center gap-2 mb-2 cursor-pointer text-sm text-gray-700 dark:text-[#c5e0db] select-none"
-                >
-                  <input
-                    type="radio"
-                    name="format"
-                    value={f}
-                    checked={effectiveFormat === f}
-                    disabled
-                    className="accent-teal-600"
-                  />
-                  {f}
                 </label>
               ))}
             </div>
