@@ -11,10 +11,11 @@ import {
 } from "lucide-react";
 import { PrintModal, type PrintJob } from "./print/PrintModal";
 import {
-  RacunTemplate,
+  RacunA4,
   type RacunZaglavlje,
   type RacunStavka,
-} from "./print/templates/RacunTemplate";
+} from "./print/templates/RacunA4";
+import { RacunA5 } from "./print/templates/RacunA5";
 
 const PRIMARY = "#0F766E";
 const ACCENT = "#F97316";
@@ -206,7 +207,14 @@ export function RacunStorno() {
       title: `Storno račun — ${kreiraniStorno.brojStornoRacuna}`,
       orientation: "portrait",
       component: (
-        <RacunTemplate
+        <RacunA4
+          racun={racunZaPrint}
+          stavke={stavkeZaPrint}
+          nazivPartnera={kreiraniStorno.nazivPartnera}
+        />
+      ),
+      componentA5: (
+        <RacunA5
           racun={racunZaPrint}
           stavke={stavkeZaPrint}
           nazivPartnera={kreiraniStorno.nazivPartnera}

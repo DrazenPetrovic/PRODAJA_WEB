@@ -40,7 +40,8 @@
       "Bash(cd \"d:/WEB_KOMERCIJALA/PRINT_AGENT/local-print-agent\" && find . -iname \"*.cs\" -not -path \"*/obj/*\" -not -path \"*/bin/*\")",
       "Bash(cd \"d:/WEB_KOMERCIJALA/PRINT_AGENT/local-print-agent\" && find . -iname \"*.log\" -o -iname \"appsettings*.json\" 2>/dev/null | grep -v obj | grep -v bin/Debug)",
       "Read(//d/WEB_KOMERCIJALA/KANCELARIJA_WEB/**)",
-      "Read(//d/WEB_KOMERCIJALA/KANCELARIJA_WEB/src/print/**)"
+      "Read(//d/WEB_KOMERCIJALA/KANCELARIJA_WEB/src/print/**)",
+      "Bash(grep -n -B2 \"PrintModal$\\\\|PrintModal job\" src/components/RacunUnos.tsx src/components/RacunPregled.tsx src/components/RacunStorno.tsx src/components/Dashboard.tsx src/components/KarticaPartnera.tsx)"
     ],
     "additionalDirectories": [
       "d:\\WEB_KOMERCIJALA\\PRINT_AGENT\\local-print-agent\\Services"

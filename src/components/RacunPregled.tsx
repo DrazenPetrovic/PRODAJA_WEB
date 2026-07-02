@@ -7,7 +7,8 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { PrintModal, type PrintJob } from "./print/PrintModal";
-import { RacunTemplate } from "./print/templates/RacunTemplate";
+import { RacunA4 } from "./print/templates/RacunA4";
+import { RacunA5 } from "./print/templates/RacunA5";
 
 const PRIMARY = "#0F766E";
 const ACCENT = "#F97316";
@@ -451,29 +452,37 @@ export function RacunPregled() {
                             </div>
                           )}
                           <button
-                            onClick={() =>
+                            onClick={() => {
+                              const stavkeZaPrint = stavke.map((s) => ({
+                                ...s,
+                                naziv_artikla:
+                                  s.naziv_artikla ??
+                                  artikliMap.get(Number(s.id_artikla)) ??
+                                  null,
+                              }));
+                              const nazivPartnera =
+                                partneriMap.get(r.id_partnera) ??
+                                `ID ${r.id_partnera}`;
                               setPrintJob({
                                 title: `${r.vrsta_racuna} — ${r.broj_racuna}`,
                                 orientation: "portrait",
                                 lockOrientation: true,
                                 component: (
-                                  <RacunTemplate
+                                  <RacunA4
                                     racun={r}
-                                    stavke={stavke.map((s) => ({
-                                      ...s,
-                                      naziv_artikla:
-                                        s.naziv_artikla ??
-                                        artikliMap.get(Number(s.id_artikla)) ??
-                                        null,
-                                    }))}
-                                    nazivPartnera={
-                                      partneriMap.get(r.id_partnera) ??
-                                      `ID ${r.id_partnera}`
-                                    }
+                                    stavke={stavkeZaPrint}
+                                    nazivPartnera={nazivPartnera}
                                   />
                                 ),
-                              })
-                            }
+                                componentA5: (
+                                  <RacunA5
+                                    racun={r}
+                                    stavke={stavkeZaPrint}
+                                    nazivPartnera={nazivPartnera}
+                                  />
+                                ),
+                              });
+                            }}
                             className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:brightness-110"
                             style={{ background: PRIMARY }}
                           >

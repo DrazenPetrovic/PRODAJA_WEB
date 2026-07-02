@@ -9,7 +9,7 @@ const PRINT_SERVICE_URL = getPrintServiceBaseUrl();
 export const PRINTER_PREFERENCE_KEY = "printService.selectedPrinter";
 
 export type PrintMode = "pdf" | "text" | "raw";
-export type PaperSize = "A4";
+export type PaperSize = "A4" | "A5";
 export type Orientation = "portrait" | "landscape";
 
 export interface PrintServiceRequest {
@@ -252,7 +252,7 @@ export function mapPrintError(code?: string): string {
     case "INVALID_REQUEST":
       return "Polja za štampu nisu dobro popunjena.";
     case "PRINT_FAILED":
-      return "Štampač ne podržava traženi format papira (A4).";
+      return "Štampač ne podržava traženi format papira (A4/A5).";
     default:
       return "Greška pri slanju na print servis.";
   }

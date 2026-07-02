@@ -43,11 +43,12 @@ function resolveDocumentTypeFromTitle(title: string): DocumentType {
 export interface PrintJob {
   title: string;
   component: React.ReactNode;
+  componentA5?: React.ReactNode;
   orientation?: "portrait" | "landscape";
   lockOrientation?: boolean;
   allowBrowserPrintFallback?: boolean;
   onPrint?: (options: {
-    format: "A4";
+    format: "A4" | "A5";
     orientation: "portrait" | "landscape";
   }) => Promise<void> | void;
 }
@@ -66,6 +67,9 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
 
   const [orientation, setOrientation] = useState<"portrait" | "landscape">(
     job.orientation ?? "portrait",
+  );
+  const [format, setFormat] = useState<"A4" | "A5">(
+    job.componentA5 ? "A5" : "A4",
   );
   const [scale, setScale] = useState(0.62);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -125,11 +129,30 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
   const effectiveOrientation = job.lockOrientation
     ? (job.orientation ?? "portrait")
     : orientation;
-  const effectiveFormat = "A4" as const;
+  const effectiveFormat = job.componentA5 ? format : "A4";
 
-  const pageWidthMm = effectiveOrientation === "portrait" ? 210 : 297;
+  const activeComponent =
+    effectiveFormat === "A5" && job.componentA5
+      ? job.componentA5
+      : job.component;
 
-  const pageHeightMm = effectiveOrientation === "portrait" ? 297 : 210;
+  const pageWidthMm =
+    effectiveOrientation === "portrait"
+      ? effectiveFormat === "A4"
+        ? 210
+        : 148
+      : effectiveFormat === "A4"
+        ? 297
+        : 210;
+
+  const pageHeightMm =
+    effectiveOrientation === "portrait"
+      ? effectiveFormat === "A4"
+        ? 297
+        : 210
+      : effectiveFormat === "A4"
+        ? 210
+        : 148;
 
   const paperW = pageWidthMm * MM_TO_PX;
 
@@ -145,18 +168,30 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
   const isServiceReadyForDirectPrint = (status: PrintServiceStatus | null) =>
     !!status && status.serviceActive && status.pdfRendererActive;
 
-  const resolvePrinterName = (status: PrintServiceStatus | null) => {
-    if (!status) return "";
+  const resolvePrinterInfo = (
+    status: PrintServiceStatus | null,
+  ): { name: string; isPreferred: boolean } => {
+    if (!status) return { name: "", isPreferred: false };
 
     const preferred = localStorage.getItem(PRINTER_PREFERENCE_KEY)?.trim();
-    if (preferred && status.printers.includes(preferred)) return preferred;
+    if (preferred && status.printers.includes(preferred)) {
+      return { name: preferred, isPreferred: true };
+    }
 
-    if (status.defaultPrinter.trim()) return status.defaultPrinter.trim();
-    if (status.printers.length > 0) return status.printers[0];
-    return "";
+    if (status.defaultPrinter.trim()) {
+      return { name: status.defaultPrinter.trim(), isPreferred: false };
+    }
+    if (status.printers.length > 0) {
+      return { name: status.printers[0], isPreferred: false };
+    }
+    return { name: "", isPreferred: false };
   };
 
-  const activePrinterName = resolvePrinterName(serviceStatus);
+  const resolvePrinterName = (status: PrintServiceStatus | null) =>
+    resolvePrinterInfo(status).name;
+
+  const { name: activePrinterName, isPreferred: activePrinterIsPreferred } =
+    resolvePrinterInfo(serviceStatus);
 
   const buildPdfFromPreview = async () => {
     const printSource = directPrintRef.current;
@@ -266,7 +301,7 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
 
     const printRoot = createRoot(mountNode);
     flushSync(() => {
-      printRoot.render(job.component);
+      printRoot.render(activeComponent);
     });
 
     const style = frameDocument.createElement("style");
@@ -419,10 +454,17 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
                 className="animate-spin"
                 style={{ color: PRIMARY }}
               />
-              <p className="text-sm font-semibold text-gray-700 dark:text-[#c5e0db]">
-                Štampanje u toku na printer{" "}
-                {activePrinterName || "nepoznat printer"}...
-              </p>
+              {activePrinterIsPreferred ? (
+                <p className="text-sm font-semibold text-gray-700 dark:text-[#c5e0db]">
+                  Štampanje na {activePrinterName}...
+                </p>
+              ) : (
+                <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 text-center max-w-[280px]">
+                  Štampač nije odabran, štampanje se vrši na DEFAULTNOM
+                  štampaču
+                  {activePrinterName ? ` (${activePrinterName})` : ""}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -436,7 +478,13 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
             <Printer size={17} />
             <span className="font-semibold text-sm">{job.title}</span>
           </div>
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 text-white/80 text-xs whitespace-nowrap">
+          <div
+            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 text-xs whitespace-nowrap ${
+              activePrinterIsPreferred
+                ? "text-white/80"
+                : "text-amber-300 font-semibold"
+            }`}
+          >
             <Printer size={13} />
             <span>{activePrinterName || "Printer nije izabran"}</span>
           </div>
@@ -471,7 +519,7 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
                   overflow: "hidden",
                 }}
               >
-                {job.component}
+                {activeComponent}
               </div>
             </div>
           </div>
@@ -533,6 +581,30 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
                 </label>
               ))}
             </div>
+
+            {job.componentA5 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-[#4a7a74] mb-2.5">
+                  Format papira
+                </p>
+                {(["A4", "A5"] as const).map((f) => (
+                  <label
+                    key={f}
+                    className="flex items-center gap-2 mb-2 cursor-pointer text-sm text-gray-700 dark:text-[#c5e0db] select-none"
+                  >
+                    <input
+                      type="radio"
+                      name="format"
+                      value={f}
+                      checked={format === f}
+                      onChange={() => setFormat(f)}
+                      className="accent-teal-600"
+                    />
+                    {f}
+                  </label>
+                ))}
+              </div>
+            )}
 
             <div className="mt-auto space-y-2">
               <div className="rounded-xl border border-gray-200 dark:border-[#1e4a44] p-3 space-y-2">
@@ -693,7 +765,7 @@ export function PrintModal({ job, onClose, onNotify }: Props) {
               background: "white",
             }}
           >
-            {job.component}
+            {activeComponent}
           </div>
         </div>
       </div>

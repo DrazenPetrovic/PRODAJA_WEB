@@ -16,7 +16,8 @@ import {
   X,
 } from "lucide-react";
 import { PrintModal, type PrintJob } from "./print/PrintModal";
-import { RacunTemplate } from "./print/templates/RacunTemplate";
+import { RacunA4 } from "./print/templates/RacunA4";
+import { RacunA5 } from "./print/templates/RacunA5";
 
 const PRIMARY = "#0F766E";
 const ACCENT = "#F97316";
@@ -1169,30 +1170,39 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
                     <button
                       onClick={() => {
                         const kr = kreiraniRacun;
+                        const racunZaPrint = {
+                          id_racuna: kr.idRacuna,
+                          broj_racuna: kr.brojRacuna,
+                          referentni_broj: kr.referentniBroj,
+                          datum_racuna: kr.datumRacuna,
+                          id_partnera: Number(kr.partner.sifra_partnera),
+                          ukupno_za_naplatu: kr.ukupno,
+                          napomena_operatera: kr.napomena || null,
+                          id_operatera: 0,
+                          vrsta_racuna: "Racun",
+                          status_racuna: "Aktivan",
+                        };
+                        const stavkeZaPrint = kr.stavkeSnimak.map((s, i) => ({
+                          id_stavke: i + 1,
+                          id_artikla: s.artikal.sifra_proizvoda,
+                          naziv_artikla: s.artikal.naziv_proizvoda,
+                          kolicina_artikla: s.kolicina,
+                          maloprodajna_cijena: s.mpc,
+                          ukupno: +(s.kolicina * s.mpc).toFixed(2),
+                        }));
                         setPrintJob({
                           title: `Račun ${kr.brojRacuna}`,
                           component: (
-                            <RacunTemplate
-                              racun={{
-                                id_racuna: kr.idRacuna,
-                                broj_racuna: kr.brojRacuna,
-                                referentni_broj: kr.referentniBroj,
-                                datum_racuna: kr.datumRacuna,
-                                id_partnera: Number(kr.partner.sifra_partnera),
-                                ukupno_za_naplatu: kr.ukupno,
-                                napomena_operatera: kr.napomena || null,
-                                id_operatera: 0,
-                                vrsta_racuna: "Racun",
-                                status_racuna: "Aktivan",
-                              }}
-                              stavke={kr.stavkeSnimak.map((s, i) => ({
-                                id_stavke: i + 1,
-                                id_artikla: s.artikal.sifra_proizvoda,
-                                naziv_artikla: s.artikal.naziv_proizvoda,
-                                kolicina_artikla: s.kolicina,
-                                maloprodajna_cijena: s.mpc,
-                                ukupno: +(s.kolicina * s.mpc).toFixed(2),
-                              }))}
+                            <RacunA4
+                              racun={racunZaPrint}
+                              stavke={stavkeZaPrint}
+                              nazivPartnera={kr.partner.naziv_partnera}
+                            />
+                          ),
+                          componentA5: (
+                            <RacunA5
+                              racun={racunZaPrint}
+                              stavke={stavkeZaPrint}
                               nazivPartnera={kr.partner.naziv_partnera}
                             />
                           ),
