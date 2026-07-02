@@ -1192,6 +1192,8 @@ export function RacunUnos({ onUspjeh }: RacunUnosProps) {
                         }));
                         setPrintJob({
                           title: `Račun ${kr.brojRacuna}`,
+                          orientation: "portrait",
+                          lockOrientation: true,
                           component: (
                             <RacunA4
                               racun={racunZaPrint}
